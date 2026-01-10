@@ -159,40 +159,40 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
   const RussianContent = (
     <>
       <div className="absolute top-6 left-6 right-6 flex justify-end">
-        <span className={`px-3 py-1.5 rounded-lg text-sm font-bold border ${POS_LABELS[currentItem.pos].color}`}>
+        <span className={`px-2 py-1 rounded-md text-xs font-bold border ${POS_LABELS[currentItem.pos].color}`}>
           {POS_LABELS[currentItem.pos].label}
         </span>
       </div>
       
       <div className="flex flex-col items-center justify-center flex-1 w-full">
-        <h2 className="text-5xl sm:text-7xl font-bold text-slate-900 font-cyrillic text-center leading-tight break-words px-4">
+        <h2 className="text-5xl font-bold text-slate-900 font-cyrillic text-center leading-tight break-words px-4">
           {currentItem.lemma}
         </h2>
         
         <button 
           onClick={(e) => { e.stopPropagation(); playAudio(currentItem.lemma); }}
-          className="mt-6 p-4 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 hover:scale-110 transition-all shadow-sm"
+          className="mt-5 p-3 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 hover:scale-110 transition-all shadow-sm"
           title="Play Audio"
         >
-          <Volume2 size={32} />
+          <Volume2 size={24} />
         </button>
       </div>
 
       {/* Show extra info only on back side if this is back */}
       {!isFrontRussian && (
-         <div className="mb-8 w-full px-8">
+         <div className="mb-6 w-full px-6">
             {currentItem.forms && (
-                <div className="flex flex-wrap gap-2 justify-center mb-4">
+                <div className="flex flex-wrap gap-2 justify-center mb-3">
                   {currentItem.forms.map((f, i) => (
-                    <span key={i} className="px-3 py-1.5 bg-slate-100 rounded-lg text-sm font-cyrillic text-slate-600 border border-slate-200">
+                    <span key={i} className="px-2 py-1 bg-slate-100 rounded-md text-xs font-cyrillic text-slate-600 border border-slate-200">
                       {f}
                     </span>
                   ))}
                 </div>
             )}
             {currentItem.syntax_note && (
-              <div className="flex items-center justify-center gap-2 text-amber-800 bg-amber-50 px-4 py-2 rounded-lg text-base border border-amber-100 w-full text-center">
-                <BookOpen size={16} className="shrink-0" /> <span className="italic">{currentItem.syntax_note}</span>
+              <div className="flex items-center justify-center gap-2 text-amber-800 bg-amber-50 px-3 py-1.5 rounded-lg text-sm border border-amber-100 w-full text-center">
+                <BookOpen size={14} className="shrink-0" /> <span className="italic">{currentItem.syntax_note}</span>
               </div>
             )}
          </div>
@@ -204,19 +204,19 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
     <>
       {!isFrontRussian && (
         <div className="absolute top-6 left-6 right-6 flex justify-end">
-          <span className={`px-3 py-1.5 rounded-lg text-sm font-bold border ${POS_LABELS[currentItem.pos].color}`}>
+          <span className={`px-2 py-1 rounded-md text-xs font-bold border ${POS_LABELS[currentItem.pos].color}`}>
             {POS_LABELS[currentItem.pos].label}
           </span>
         </div>
       )}
       <div className="flex flex-col items-center justify-center flex-1 w-full p-4">
-        <h3 className="text-4xl sm:text-5xl font-bold text-slate-800 text-center leading-relaxed break-words">
+        <h3 className="text-4xl font-bold text-slate-800 text-center leading-relaxed break-words">
           {currentItem.translation}
         </h3>
         
         {/* If this is back (Russian Front), show syntax note here for context */}
         {isFrontRussian && currentItem.syntax_note && (
-          <div className="mt-8 px-5 py-3 bg-slate-50 rounded-xl border border-slate-200 text-slate-600 text-base italic max-w-lg text-center">
+          <div className="mt-6 px-4 py-2 bg-slate-50 rounded-lg border border-slate-200 text-slate-600 text-sm italic max-w-sm text-center">
             Note: {currentItem.syntax_note}
           </div>
         )}
@@ -225,21 +225,22 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
   );
 
   return (
-    <div className="w-full max-w-5xl mx-auto flex flex-col items-center justify-start min-h-[calc(100vh-140px)] p-4 sm:p-6">
+    <div className="w-full max-w-3xl mx-auto flex flex-col items-center justify-start min-h-[calc(100vh-140px)] p-4">
       
       {/* Header Info */}
       <div className="w-full flex justify-between items-center mb-6 text-slate-500 font-medium">
-        <span className="bg-white px-3 py-1 rounded-full border border-slate-200 text-sm shadow-sm">
+        <span className="bg-white px-3 py-1 rounded-full border border-slate-200 text-xs shadow-sm">
           Card {currentIndex + 1} / {sessionItems.length}
         </span>
-        <button onClick={onExit} className="hover:text-slate-800 hover:bg-white px-3 py-1 rounded-full transition-all">
+        <button onClick={onExit} className="hover:text-slate-800 hover:bg-white px-3 py-1 text-sm rounded-full transition-all">
           Exit Review
         </button>
       </div>
 
       {/* Main Card Area */}
+      {/* Decreased height from 60vh to 50vh, and min-height from 500px to 400px */}
       <div 
-        className="relative w-full h-[60vh] min-h-[500px] perspective-1000 group cursor-pointer"
+        className="relative w-full h-[50vh] min-h-[400px] perspective-1000 group cursor-pointer"
         onClick={() => setIsFlipped(!isFlipped)}
       >
         <div className={`relative w-full h-full duration-500 transform-style-3d transition-transform ${isFlipped ? 'rotate-y-180' : ''}`}>
@@ -247,8 +248,8 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
           {/* Front Face */}
           <div className="absolute w-full h-full backface-hidden bg-white rounded-3xl shadow-xl border border-slate-200 flex flex-col items-center justify-between overflow-hidden">
              {isFrontRussian ? RussianContent : ChineseContent}
-             <div className="w-full py-4 bg-slate-50 border-t border-slate-100 text-slate-400 text-sm flex items-center justify-center gap-2">
-               <Eye size={16} /> Tap card to flip
+             <div className="w-full py-3 bg-slate-50 border-t border-slate-100 text-slate-400 text-xs flex items-center justify-center gap-2">
+               <Eye size={14} /> Tap card to flip
              </div>
           </div>
 
@@ -263,25 +264,25 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
       </div>
 
       {/* Controls */}
-      <div className="flex items-center gap-12 mt-8 w-full max-w-md justify-center">
+      <div className="flex items-center gap-10 mt-8 w-full max-w-xs justify-center">
         <button 
           onClick={(e) => { e.stopPropagation(); handleNext('hard'); }}
           className="flex flex-col items-center gap-2 text-slate-400 hover:text-red-500 transition-colors group flex-1"
         >
-          <div className="w-16 h-16 rounded-2xl bg-white border-2 border-slate-200 flex items-center justify-center shadow-sm group-hover:border-red-200 group-hover:bg-red-50 group-hover:shadow-lg group-hover:-translate-y-1 transition-all duration-200">
-            <X size={32} />
+          <div className="w-14 h-14 rounded-2xl bg-white border-2 border-slate-200 flex items-center justify-center shadow-sm group-hover:border-red-200 group-hover:bg-red-50 group-hover:shadow-lg group-hover:-translate-y-1 transition-all duration-200">
+            <X size={28} />
           </div>
-          <span className="text-sm font-bold uppercase tracking-wide">Hard</span>
+          <span className="text-xs font-bold uppercase tracking-wide">Hard</span>
         </button>
 
         <button 
           onClick={(e) => { e.stopPropagation(); handleNext('easy'); }}
           className="flex flex-col items-center gap-2 text-slate-400 hover:text-green-600 transition-colors group flex-1"
         >
-          <div className="w-16 h-16 rounded-2xl bg-white border-2 border-slate-200 flex items-center justify-center shadow-sm group-hover:border-green-200 group-hover:bg-green-50 group-hover:shadow-lg group-hover:-translate-y-1 transition-all duration-200">
-            <Check size={32} />
+          <div className="w-14 h-14 rounded-2xl bg-white border-2 border-slate-200 flex items-center justify-center shadow-sm group-hover:border-green-200 group-hover:bg-green-50 group-hover:shadow-lg group-hover:-translate-y-1 transition-all duration-200">
+            <Check size={28} />
           </div>
-          <span className="text-sm font-bold uppercase tracking-wide">Easy</span>
+          <span className="text-xs font-bold uppercase tracking-wide">Easy</span>
         </button>
       </div>
 

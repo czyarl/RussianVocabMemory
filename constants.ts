@@ -121,7 +121,7 @@ export const INITIAL_DATA: Category[] = [
       { "lemma": "врач", "translation": "医生", "pos": "noun", "grammar": { "gender": "m" } },
       { "lemma": "космонавт", "translation": "宇航员", "pos": "noun", "grammar": { "gender": "m" } },
       { "lemma": "шофёр", "translation": "司机", "pos": "noun", "grammar": { "gender": "m" } },
-      { "lemma": "москвич", "translation": "莫斯科人", "pos": "noun", "grammar": { "gender": "m" } }，
+      { "lemma": "москвич", "translation": "莫斯科人", "pos": "noun", "grammar": { "gender": "m" } },
       { "lemma": "кот", "translation": "公猫", "pos": "noun", "grammar": { "gender": "m" } },
       { "lemma": "собака", "translation": "狗", "pos": "noun", "grammar": { "gender": "f" } },
       { "lemma": "утка", "translation": "鸭子", "pos": "noun", "grammar": { "gender": "f" } },
@@ -166,7 +166,7 @@ export const INITIAL_DATA: Category[] = [
       { "lemma": "сумка", "translation": "手提包", "pos": "noun", "grammar": { "gender": "f" }, "syntax_note": "笔记补充：书包" },
       { "lemma": "стакан", "translation": "杯子/玻璃杯", "pos": "noun", "grammar": { "gender": "m" } },
       { "lemma": "ваза", "translation": "花瓶", "pos": "noun", "grammar": { "gender": "f" } },
-      { "lemma": "кофта", "translation": "女短上衣", "pos": "noun", "grammar": { "gender": "f" } }，
+      { "lemma": "кофта", "translation": "女短上衣", "pos": "noun", "grammar": { "gender": "f" } },
       { "lemma": "университет", "translation": "大学", "pos": "noun", "grammar": { "gender": "m" } },
       { "lemma": "институт", "translation": "学院", "pos": "noun", "grammar": { "gender": "m" } },
       { "lemma": "школа", "translation": "学校 (图外补充)", "pos": "noun", "grammar": { "gender": "f" } },
