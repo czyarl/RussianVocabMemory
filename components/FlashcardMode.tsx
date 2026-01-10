@@ -10,6 +10,7 @@ interface FlashcardModeProps {
   strategy: ReviewStrategy;
   limit: number | 'all';
   onResetFilter: () => void;
+  audioSource?: 'browser' | 'google';
 }
 
 // LocalStorage Key
@@ -27,7 +28,8 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
   direction, 
   strategy,
   limit,
-  onResetFilter 
+  onResetFilter,
+  audioSource = 'browser'
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
@@ -152,6 +154,20 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
   };
 
   const playAudio = (text: string) => {
+    if (audioSource === 'google') {
+      const encodedText = encodeURIComponent(text);
+      const audio = new Audio(`https://translate.google.com/translate_tts?ie=UTF-8&q=${encodedText}&tl=ru&client=tw-ob`);
+      audio.play().catch(err => {
+         console.error("Google Audio Playback Error:", err);
+         speakBrowser(text);
+      });
+    } else {
+      speakBrowser(text);
+    }
+  };
+
+  const speakBrowser = (text: string) => {
+    window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'ru-RU';
     utterance.rate = 0.8;

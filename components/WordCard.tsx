@@ -7,15 +7,33 @@ import { analyzeWordWithGemini } from '../services/geminiService';
 interface WordCardProps {
   item: WordItem;
   layout?: 'grid' | 'list';
+  audioSource?: 'browser' | 'google';
 }
 
-export const WordCard: React.FC<WordCardProps> = ({ item, layout = 'grid' }) => {
+export const WordCard: React.FC<WordCardProps> = ({ item, layout = 'grid', audioSource = 'browser' }) => {
   const [expanded, setExpanded] = useState(false);
   const [analysis, setAnalysis] = useState<AIWordAnalysis | null>(null);
   const [loadingAI, setLoadingAI] = useState(false);
 
   const playAudio = (text: string) => {
+    if (audioSource === 'google') {
+      // Use Google Translate TTS (unofficial endpoint, works for basic use)
+      const encodedText = encodeURIComponent(text);
+      const audio = new Audio(`https://translate.google.com/translate_tts?ie=UTF-8&q=${encodedText}&tl=ru&client=tw-ob`);
+      audio.play().catch(err => {
+        console.error("Google Audio Playback Error:", err);
+        // Fallback to browser if Google fails (e.g. offline)
+        speakBrowser(text);
+      });
+    } else {
+      speakBrowser(text);
+    }
+  };
+
+  const speakBrowser = (text: string) => {
     if ('speechSynthesis' in window) {
+      // Cancel previous to avoid stacking
+      window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = 'ru-RU';
       utterance.rate = 0.8; // Slightly slower for learners
@@ -66,7 +84,7 @@ export const WordCard: React.FC<WordCardProps> = ({ item, layout = 'grid' }) => 
           <button 
             onClick={(e) => { e.stopPropagation(); playAudio(displayLemma); }}
             className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all"
-            title="Listen"
+            title={`Listen (${audioSource === 'google' ? 'Google' : 'Browser'})`}
           >
             <Volume2 size={18} />
           </button>

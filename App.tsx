@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { INITIAL_DATA, POS_LABELS } from './constants';
 import { WordCard } from './components/WordCard';
 import { FlashcardMode } from './components/FlashcardMode';
-import { Search, Layers, Book, Grid, List, Zap, Filter, Settings, Brain, ArrowRightLeft, ListFilter, Shuffle, SortAsc, PieChart } from 'lucide-react';
+import { Search, Layers, Book, Grid, List, Zap, Filter, Settings, Brain, ArrowRightLeft, ListFilter, Shuffle, SortAsc, PieChart, Trash2, Volume2 } from 'lucide-react';
 import { PartOfSpeech, ReviewStrategy } from './types';
 
 const STATS_KEY = 'ruvocab-progress';
@@ -15,6 +15,10 @@ const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<'browse' | 'flashcard'>('browse');
   const [layoutMode, setLayoutMode] = useState<'grid' | 'list'>('grid');
   const [showFilters, setShowFilters] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0); // Forces stats recalculation
+
+  // Audio Settings
+  const [audioSource, setAudioSource] = useState<'browser' | 'google'>('browser');
 
   // Study Settings
   const [studyDirection, setStudyDirection] = useState<'ru-zh' | 'zh-ru'>('ru-zh');
@@ -44,38 +48,88 @@ const App: React.FC = () => {
   const [stats, setStats] = useState({ total: 0, hard: 0, learning: 0, mastered: 0, unseen: 0 });
 
   useEffect(() => {
-    // Re-calculate stats whenever view mode changes (coming back from study) or direction changes
+    // Re-calculate stats whenever view mode changes, direction changes, or explicit refresh triggered
     if (viewMode === 'browse') {
-      const statsStr = localStorage.getItem(STATS_KEY);
-      const storageData = statsStr ? JSON.parse(statsStr) : {};
-      
-      let hard = 0;
-      let learning = 0;
-      let mastered = 0;
-      let unseen = 0;
-      
-      // Calculate based on ALL items to show global progress
-      allItems.forEach(item => {
-        const key = `${studyDirection}:${item.lemma}`;
-        const record = storageData[key];
+      try {
+        const statsStr = localStorage.getItem(STATS_KEY);
+        const storageData = statsStr ? JSON.parse(statsStr) : {};
         
-        if (!record) {
-          unseen++;
-        } else {
-           const streak = record.streak || 0;
-           if (record.difficulty === 'hard' || streak === 0) {
-             hard++;
-           } else if (streak >= 3) {
-             mastered++;
-           } else {
-             learning++; // streak 1 or 2
-           }
-        }
-      });
-      
-      setStats({ total: allItems.length, hard, learning, mastered, unseen });
+        let hard = 0;
+        let learning = 0;
+        let mastered = 0;
+        let unseen = 0;
+        
+        // Calculate based on ALL items to show global progress
+        allItems.forEach(item => {
+          const key = `${studyDirection}:${item.lemma}`;
+          const record = storageData[key];
+          
+          if (!record) {
+            unseen++;
+          } else {
+             const streak = record.streak || 0;
+             if (record.difficulty === 'hard' || streak === 0) {
+               hard++;
+             } else if (streak >= 3) {
+               mastered++;
+             } else {
+               learning++; // streak 1 or 2
+             }
+          }
+        });
+        
+        setStats({ total: allItems.length, hard, learning, mastered, unseen });
+      } catch (e) {
+        console.error("Error calculating stats:", e);
+        // Fallback to zero stats to prevent crash
+        setStats({ total: allItems.length, hard: 0, learning: 0, mastered: 0, unseen: allItems.length });
+      }
     }
-  }, [viewMode, studyDirection, allItems]);
+  }, [viewMode, studyDirection, allItems, refreshTrigger]);
+
+  const handleResetProgress = () => {
+    const directionLabel = studyDirection === 'ru-zh' ? 'Russian → Chinese' : 'Chinese → Russian';
+    if (window.confirm(`Are you sure you want to reset all progress for ${directionLabel}? This cannot be undone.`)) {
+      try {
+        const statsStr = localStorage.getItem(STATS_KEY);
+        if (statsStr) {
+          const data = JSON.parse(statsStr);
+          const newData: Record<string, any> = {};
+          // Only keep keys that DON'T match the current direction
+          const prefix = `${studyDirection}:`;
+          let deletedCount = 0;
+
+          Object.keys(data).forEach(key => {
+            if (!key.startsWith(prefix)) {
+              newData[key] = data[key];
+            } else {
+              deletedCount++;
+            }
+          });
+          
+          console.log(`Resetting progress: Deleted ${deletedCount} records for prefix ${prefix}`);
+          localStorage.setItem(STATS_KEY, JSON.stringify(newData));
+        }
+        
+        // Optimistic UI update: Reset stats immediately to reflect empty state
+        // This ensures the user sees the change instantly even if useEffect has a slight delay
+        setStats({
+          total: allItems.length,
+          hard: 0,
+          learning: 0,
+          mastered: 0,
+          unseen: allItems.length
+        });
+
+        // Trigger refresh for other components if needed
+        setRefreshTrigger(prev => prev + 1);
+        
+      } catch (e) {
+        console.error("Failed to reset progress:", e);
+        alert("An error occurred while resetting progress. Please try refreshing the page.");
+      }
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col">
@@ -91,6 +145,22 @@ const App: React.FC = () => {
             </div>
             
             <div className="flex items-center gap-3">
+              {/* Audio Source Selector */}
+              <div className="hidden sm:flex items-center gap-2 mr-2 bg-slate-100 rounded-lg p-1">
+                <div className="px-2 text-slate-400">
+                  <Volume2 size={16} />
+                </div>
+                <select 
+                  value={audioSource}
+                  onChange={(e) => setAudioSource(e.target.value as 'browser' | 'google')}
+                  className="bg-transparent text-sm font-medium text-slate-700 focus:outline-none cursor-pointer pr-2"
+                  title="Select Audio Source"
+                >
+                  <option value="browser">Browser / System (Offline)</option>
+                  <option value="google">Google Translate (Online)</option>
+                </select>
+              </div>
+
               <button 
                 onClick={() => setViewMode(viewMode === 'browse' ? 'flashcard' : 'browse')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
@@ -189,6 +259,7 @@ const App: React.FC = () => {
                   direction={studyDirection}
                   strategy={reviewStrategy}
                   limit={cardLimit}
+                  audioSource={audioSource}
                   onResetFilter={() => {
                     setReviewStrategy('smart_sort');
                     setCardLimit('all');
@@ -218,13 +289,24 @@ const App: React.FC = () => {
                     {studyDirection === 'ru-zh' ? 'Russian → Chinese' : 'Chinese → Russian'}
                   </span>
                 </div>
-                {/* Switch Direction for stats */}
-                <button 
-                  onClick={() => setStudyDirection(prev => prev === 'ru-zh' ? 'zh-ru' : 'ru-zh')}
-                  className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
-                >
-                  <ArrowRightLeft size={12} /> Switch Direction
-                </button>
+                
+                <div className="flex items-center gap-4">
+                    {/* Switch Direction for stats */}
+                    <button 
+                      onClick={() => setStudyDirection(prev => prev === 'ru-zh' ? 'zh-ru' : 'ru-zh')}
+                      className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
+                    >
+                      <ArrowRightLeft size={12} /> Switch Direction
+                    </button>
+
+                    <button 
+                      onClick={handleResetProgress}
+                      className="text-xs text-red-500 hover:text-red-700 font-medium flex items-center gap-1"
+                      title={`Reset progress for ${studyDirection === 'ru-zh' ? 'Russian -> Chinese' : 'Chinese -> Russian'}`}
+                    >
+                      <Trash2 size={12} /> Reset Progress
+                    </button>
+                </div>
               </div>
 
               {/* Progress Bar */}
@@ -280,6 +362,19 @@ const App: React.FC = () => {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="block w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-lg leading-5 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm shadow-sm transition-shadow"
                 />
+              </div>
+
+               {/* Mobile Audio Select (Visible only on small screens) */}
+               <div className="md:hidden flex items-center gap-2 bg-slate-100 rounded-lg p-2 border border-slate-200">
+                <Volume2 size={18} className="text-slate-500" />
+                <select 
+                  value={audioSource}
+                  onChange={(e) => setAudioSource(e.target.value as 'browser' | 'google')}
+                  className="bg-transparent text-sm font-medium text-slate-700 focus:outline-none w-full"
+                >
+                  <option value="browser">Browser Audio</option>
+                  <option value="google">Google Translate Audio</option>
+                </select>
               </div>
 
               {/* Toggle Filters Button (Mobile) */}
@@ -372,7 +467,7 @@ const App: React.FC = () => {
               }
             `}>
               {filteredItems.map((item, index) => (
-                <WordCard key={`${item.lemma}-${index}`} item={item} layout={layoutMode} />
+                <WordCard key={`${item.lemma}-${index}`} item={item} layout={layoutMode} audioSource={audioSource} />
               ))}
             </div>
           ) : (
