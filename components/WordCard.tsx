@@ -3,42 +3,22 @@ import { Volume2, Sparkles, BookOpen, ChevronDown, ChevronUp, Loader2 } from 'lu
 import { WordItem, AIWordAnalysis } from '../types';
 import { POS_LABELS } from '../constants';
 import { analyzeWordWithGemini } from '../services/geminiService';
+import { AudioVoice, speakRussian } from '../services/audioService';
 
 interface WordCardProps {
   item: WordItem;
   layout?: 'grid' | 'list';
-  audioSource?: 'browser' | 'google';
+  selectedVoice: AudioVoice | null;
 }
 
-export const WordCard: React.FC<WordCardProps> = ({ item, layout = 'grid', audioSource = 'browser' }) => {
+export const WordCard: React.FC<WordCardProps> = ({ item, layout = 'grid', selectedVoice }) => {
   const [expanded, setExpanded] = useState(false);
   const [analysis, setAnalysis] = useState<AIWordAnalysis | null>(null);
   const [loadingAI, setLoadingAI] = useState(false);
 
-  const playAudio = (text: string) => {
-    if (audioSource === 'google') {
-      // Use Google Translate TTS (unofficial endpoint, works for basic use)
-      const encodedText = encodeURIComponent(text);
-      const audio = new Audio(`https://translate.google.com/translate_tts?ie=UTF-8&q=${encodedText}&tl=ru&client=tw-ob`);
-      audio.play().catch(err => {
-        console.error("Google Audio Playback Error:", err);
-        // Fallback to browser if Google fails (e.g. offline)
-        speakBrowser(text);
-      });
-    } else {
-      speakBrowser(text);
-    }
-  };
-
-  const speakBrowser = (text: string) => {
-    if ('speechSynthesis' in window) {
-      // Cancel previous to avoid stacking
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'ru-RU';
-      utterance.rate = 0.8; // Slightly slower for learners
-      window.speechSynthesis.speak(utterance);
-    }
+  const handlePlayAudio = (e: React.MouseEvent, text: string) => {
+    e.stopPropagation();
+    speakRussian(text, selectedVoice);
   };
 
   const handleAIAnalysis = async (e: React.MouseEvent) => {
@@ -77,14 +57,14 @@ export const WordCard: React.FC<WordCardProps> = ({ item, layout = 'grid', audio
         <div className="flex items-baseline gap-2">
           <h3 
             className="text-2xl font-bold text-slate-900 font-cyrillic cursor-pointer hover:text-blue-700 transition-colors"
-            onClick={() => playAudio(displayLemma)}
+            onClick={(e) => handlePlayAudio(e, displayLemma)}
           >
             {displayLemma}
           </h3>
           <button 
-            onClick={(e) => { e.stopPropagation(); playAudio(displayLemma); }}
+            onClick={(e) => handlePlayAudio(e, displayLemma)}
             className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all"
-            title={`Listen (${audioSource === 'google' ? 'Google' : 'Browser'})`}
+            title={`Listen: ${selectedVoice?.name || 'Auto'}`}
           >
             <Volume2 size={18} />
           </button>

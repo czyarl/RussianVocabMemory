@@ -4,6 +4,7 @@ import { WordCard } from './components/WordCard';
 import { FlashcardMode } from './components/FlashcardMode';
 import { Search, Layers, Book, Grid, List, Zap, Filter, Settings, Brain, ArrowRightLeft, ListFilter, Shuffle, SortAsc, PieChart, Trash2, Volume2 } from 'lucide-react';
 import { PartOfSpeech, ReviewStrategy } from './types';
+import { getBrowserVoices, AudioVoice, GOOGLE_VOICE_URI } from './services/audioService';
 
 const STATS_KEY = 'ruvocab-progress';
 
@@ -17,8 +18,44 @@ const App: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0); // Forces stats recalculation
 
-  // Audio Settings
-  const [audioSource, setAudioSource] = useState<'browser' | 'google'>('browser');
+  // --- Audio Settings ---
+  const [voices, setVoices] = useState<AudioVoice[]>([]);
+  // Default to Google Online as it's usually best quality, fall back to whatever is first later
+  const [selectedVoiceURI, setSelectedVoiceURI] = useState<string>(GOOGLE_VOICE_URI);
+
+  // Load voices on mount and when changed
+  useEffect(() => {
+    const loadVoices = () => {
+      const browserVoices = getBrowserVoices();
+      const googleOption: AudioVoice = {
+        name: 'Google Translate (Online)',
+        voiceURI: GOOGLE_VOICE_URI,
+        lang: 'ru-RU',
+        localService: false
+      };
+      
+      // Combine online option with detected browser voices
+      setVoices([googleOption, ...browserVoices]);
+    };
+
+    loadVoices();
+    
+    // Chrome requires this event listener
+    if (window.speechSynthesis) {
+      window.speechSynthesis.onvoiceschanged = loadVoices;
+    }
+
+    return () => {
+      if (window.speechSynthesis) {
+        window.speechSynthesis.onvoiceschanged = null;
+      }
+    };
+  }, []);
+
+  // Find the actual voice object based on the selected URI
+  const currentVoiceObject = useMemo(() => {
+    return voices.find(v => v.voiceURI === selectedVoiceURI) || voices[0] || null;
+  }, [voices, selectedVoiceURI]);
 
   // Study Settings
   const [studyDirection, setStudyDirection] = useState<'ru-zh' | 'zh-ru'>('ru-zh');
@@ -146,18 +183,21 @@ const App: React.FC = () => {
             
             <div className="flex items-center gap-3">
               {/* Audio Source Selector */}
-              <div className="hidden sm:flex items-center gap-2 mr-2 bg-slate-100 rounded-lg p-1">
+              <div className="hidden sm:flex items-center gap-2 mr-2 bg-slate-100 rounded-lg p-1 max-w-[200px] md:max-w-xs">
                 <div className="px-2 text-slate-400">
                   <Volume2 size={16} />
                 </div>
                 <select 
-                  value={audioSource}
-                  onChange={(e) => setAudioSource(e.target.value as 'browser' | 'google')}
-                  className="bg-transparent text-sm font-medium text-slate-700 focus:outline-none cursor-pointer pr-2"
-                  title="Select Audio Source"
+                  value={selectedVoiceURI}
+                  onChange={(e) => setSelectedVoiceURI(e.target.value)}
+                  className="bg-transparent text-sm font-medium text-slate-700 focus:outline-none cursor-pointer pr-2 w-full truncate"
+                  title="Select Voice"
                 >
-                  <option value="browser">Browser / System (Offline)</option>
-                  <option value="google">Google Translate (Online)</option>
+                  {voices.map((voice) => (
+                    <option key={voice.voiceURI} value={voice.voiceURI}>
+                      {voice.name}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -259,7 +299,7 @@ const App: React.FC = () => {
                   direction={studyDirection}
                   strategy={reviewStrategy}
                   limit={cardLimit}
-                  audioSource={audioSource}
+                  selectedVoice={currentVoiceObject}
                   onResetFilter={() => {
                     setReviewStrategy('smart_sort');
                     setCardLimit('all');
@@ -368,12 +408,15 @@ const App: React.FC = () => {
                <div className="md:hidden flex items-center gap-2 bg-slate-100 rounded-lg p-2 border border-slate-200">
                 <Volume2 size={18} className="text-slate-500" />
                 <select 
-                  value={audioSource}
-                  onChange={(e) => setAudioSource(e.target.value as 'browser' | 'google')}
+                  value={selectedVoiceURI}
+                  onChange={(e) => setSelectedVoiceURI(e.target.value)}
                   className="bg-transparent text-sm font-medium text-slate-700 focus:outline-none w-full"
                 >
-                  <option value="browser">Browser Audio</option>
-                  <option value="google">Google Translate Audio</option>
+                   {voices.map((voice) => (
+                    <option key={voice.voiceURI} value={voice.voiceURI}>
+                      {voice.name}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -467,7 +510,12 @@ const App: React.FC = () => {
               }
             `}>
               {filteredItems.map((item, index) => (
-                <WordCard key={`${item.lemma}-${index}`} item={item} layout={layoutMode} audioSource={audioSource} />
+                <WordCard 
+                  key={`${item.lemma}-${index}`} 
+                  item={item} 
+                  layout={layoutMode} 
+                  selectedVoice={currentVoiceObject} 
+                />
               ))}
             </div>
           ) : (

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { WordItem, ReviewStrategy } from '../types';
 import { Volume2, Check, X, Eye, BookOpen, RefreshCw } from 'lucide-react';
 import { POS_LABELS } from '../constants';
+import { AudioVoice, speakRussian } from '../services/audioService';
 
 interface FlashcardModeProps {
   items: WordItem[];
@@ -10,7 +11,7 @@ interface FlashcardModeProps {
   strategy: ReviewStrategy;
   limit: number | 'all';
   onResetFilter: () => void;
-  audioSource?: 'browser' | 'google';
+  selectedVoice: AudioVoice | null;
 }
 
 // LocalStorage Key
@@ -29,7 +30,7 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
   strategy,
   limit,
   onResetFilter,
-  audioSource = 'browser'
+  selectedVoice
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
@@ -47,8 +48,6 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
     const stats: Record<string, WordStats> = statsStr ? JSON.parse(statsStr) : {};
 
     // 1. PRE-SHUFFLE for Smart/Random/Hard modes
-    // This solves the problem where "New" words appear in logical order (Jan, Feb, Mar)
-    // allowing users to guess context. We shuffle BEFORE scoring.
     if (strategy !== 'sequential') {
       candidateItems.sort(() => Math.random() - 0.5);
     }
@@ -58,14 +57,12 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
       candidateItems = candidateItems.filter(item => {
         const key = getStorageKey(item.lemma);
         const stat = stats[key];
-        // Hard is defined as explicit 'hard' OR streak reset to 0 after being seen
         return stat && (stat.difficulty === 'hard' || stat.streak === 0);
       });
     }
 
-    // 3. Sort logic
+    // 3. Sort logic for Smart Cram
     if (strategy === 'smart_sort') {
-      // Smart Cram Mode Logic with Streak
       const now = Date.now();
       const ONE_DAY = 24 * 60 * 60 * 1000;
 
@@ -76,27 +73,13 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
         const statB = stats[keyB];
         
         const getScore = (stat?: WordStats) => {
-          // Score components:
-          // 1. New words (No stat): Priority High (but below active Hard) -> Score 500
-          // 2. Hard words (Streak 0): Priority Highest -> Score 1000+
-          // 3. Learning words (Streak 1-2): Priority Medium (Spaced Repetition) -> Score 700
-          // 4. Mastered words (Streak 3+): Priority Low -> Score 0-100 (based on time)
-
           if (!stat) return 500; 
-
-          // Hard / Reset words
           if (stat.difficulty === 'hard' || stat.streak === 0) {
              return 1000 + (now - stat.lastReviewed) / ONE_DAY;
           }
-
-          // Learning Phase (Streak 1 or 2)
-          // We want to verify these again relatively soon to build the streak
           if (stat.streak < 3) {
              return 700 + (now - stat.lastReviewed) / ONE_DAY;
           }
-          
-          // Mastered Phase (Streak 3+)
-          // Push to back, sort by time since last review
           const daysSince = (now - stat.lastReviewed) / ONE_DAY;
           return daysSince; 
         };
@@ -125,7 +108,6 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
 
   const handleNext = (difficulty?: 'easy' | 'hard') => {
     if (difficulty && currentItem) {
-      // Save stats to localStorage with Direction Prefix
       const statsStr = localStorage.getItem(STATS_KEY);
       const stats: Record<string, WordStats> = statsStr ? JSON.parse(statsStr) : {};
       
@@ -133,9 +115,6 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
       const currentStat = stats[key];
       const currentStreak = currentStat?.streak || 0;
 
-      // Logic: 
-      // Hard -> Reset streak to 0
-      // Easy -> Increment streak
       const newStreak = difficulty === 'hard' ? 0 : currentStreak + 1;
       
       stats[key] = {
@@ -153,25 +132,9 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
     }, 150);
   };
 
-  const playAudio = (text: string) => {
-    if (audioSource === 'google') {
-      const encodedText = encodeURIComponent(text);
-      const audio = new Audio(`https://translate.google.com/translate_tts?ie=UTF-8&q=${encodedText}&tl=ru&client=tw-ob`);
-      audio.play().catch(err => {
-         console.error("Google Audio Playback Error:", err);
-         speakBrowser(text);
-      });
-    } else {
-      speakBrowser(text);
-    }
-  };
-
-  const speakBrowser = (text: string) => {
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'ru-RU';
-    utterance.rate = 0.8;
-    window.speechSynthesis.speak(utterance);
+  const handlePlayAudio = (e: React.MouseEvent, text: string) => {
+    e.stopPropagation();
+    speakRussian(text, selectedVoice);
   };
 
   // --- Render States ---
@@ -223,9 +186,9 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
         </h2>
         
         <button 
-          onClick={(e) => { e.stopPropagation(); playAudio(currentItem.lemma); }}
+          onClick={(e) => handlePlayAudio(e, currentItem.lemma)}
           className="mt-4 p-2.5 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 hover:scale-110 transition-all shadow-sm"
-          title="Play Audio"
+          title={`Play Audio (${selectedVoice?.name || 'Auto'})`}
         >
           <Volume2 size={24} />
         </button>
