@@ -1,9 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { INITIAL_DATA, POS_LABELS } from './constants';
 import { WordCard } from './components/WordCard';
 import { FlashcardMode } from './components/FlashcardMode';
-import { Search, Layers, Book, Grid, List, Zap, Filter, Settings, Brain, ArrowRightLeft, ListFilter, Shuffle, SortAsc } from 'lucide-react';
+import { Search, Layers, Book, Grid, List, Zap, Filter, Settings, Brain, ArrowRightLeft, ListFilter, Shuffle, SortAsc, PieChart } from 'lucide-react';
 import { PartOfSpeech, ReviewStrategy } from './types';
+
+const STATS_KEY = 'ruvocab-progress';
 
 const App: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState<string>('All');
@@ -16,7 +18,7 @@ const App: React.FC = () => {
 
   // Study Settings
   const [studyDirection, setStudyDirection] = useState<'ru-zh' | 'zh-ru'>('ru-zh');
-  const [reviewStrategy, setReviewStrategy] = useState<ReviewStrategy>('sequential');
+  const [reviewStrategy, setReviewStrategy] = useState<ReviewStrategy>('smart_sort');
   const [cardLimit, setCardLimit] = useState<number | 'all'>('all');
 
   // Flatten items for easy filtering
@@ -37,6 +39,43 @@ const App: React.FC = () => {
       return matchesCategory && matchesPos && matchesSearch;
     });
   }, [allItems, activeCategory, selectedPos, searchQuery]);
+
+  // --- Statistics Calculation ---
+  const [stats, setStats] = useState({ total: 0, hard: 0, learning: 0, mastered: 0, unseen: 0 });
+
+  useEffect(() => {
+    // Re-calculate stats whenever view mode changes (coming back from study) or direction changes
+    if (viewMode === 'browse') {
+      const statsStr = localStorage.getItem(STATS_KEY);
+      const storageData = statsStr ? JSON.parse(statsStr) : {};
+      
+      let hard = 0;
+      let learning = 0;
+      let mastered = 0;
+      let unseen = 0;
+      
+      // Calculate based on ALL items to show global progress
+      allItems.forEach(item => {
+        const key = `${studyDirection}:${item.lemma}`;
+        const record = storageData[key];
+        
+        if (!record) {
+          unseen++;
+        } else {
+           const streak = record.streak || 0;
+           if (record.difficulty === 'hard' || streak === 0) {
+             hard++;
+           } else if (streak >= 3) {
+             mastered++;
+           } else {
+             learning++; // streak 1 or 2
+           }
+        }
+      });
+      
+      setStats({ total: allItems.length, hard, learning, mastered, unseen });
+    }
+  }, [viewMode, studyDirection, allItems]);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col">
@@ -103,9 +142,9 @@ const App: React.FC = () => {
                         onChange={(e) => setReviewStrategy(e.target.value as ReviewStrategy)}
                         className="appearance-none pl-8 pr-8 py-1.5 rounded-lg text-xs font-medium bg-slate-50 border border-slate-200 hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100 cursor-pointer text-slate-700"
                       >
+                        <option value="smart_sort">Smart Cram (Recommended)</option>
                         <option value="sequential">Sequential (Default Order)</option>
                         <option value="random">Shuffle (Random)</option>
-                        <option value="smart_sort">Smart Priority</option>
                         <option value="hard_only">Hard Only</option>
                       </select>
                       <div className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
@@ -168,6 +207,66 @@ const App: React.FC = () => {
           
           {/* Controls Bar */}
           <div className="mb-8 space-y-4">
+            
+            {/* PROGRESS DASHBOARD */}
+            <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm mb-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-3 gap-2">
+                <div className="flex items-center gap-2 text-slate-800 font-bold">
+                  <PieChart size={20} className="text-indigo-600" />
+                  <span>Your Progress</span>
+                  <span className="text-xs font-normal text-slate-500 bg-slate-100 px-2 py-0.5 rounded ml-2">
+                    {studyDirection === 'ru-zh' ? 'Russian → Chinese' : 'Chinese → Russian'}
+                  </span>
+                </div>
+                {/* Switch Direction for stats */}
+                <button 
+                  onClick={() => setStudyDirection(prev => prev === 'ru-zh' ? 'zh-ru' : 'ru-zh')}
+                  className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
+                >
+                  <ArrowRightLeft size={12} /> Switch Direction
+                </button>
+              </div>
+
+              {/* Progress Bar */}
+              <div className="w-full h-4 bg-slate-100 rounded-full overflow-hidden flex">
+                <div 
+                  className="bg-green-500 h-full transition-all duration-500" 
+                  style={{ width: `${(stats.mastered / stats.total) * 100}%` }}
+                  title={`${stats.mastered} Mastered (Streak 3+)`}
+                />
+                <div 
+                  className="bg-yellow-400 h-full transition-all duration-500" 
+                  style={{ width: `${(stats.learning / stats.total) * 100}%` }}
+                  title={`${stats.learning} Learning (Streak 1-2)`}
+                />
+                <div 
+                  className="bg-red-500 h-full transition-all duration-500" 
+                  style={{ width: `${(stats.hard / stats.total) * 100}%` }}
+                  title={`${stats.hard} Hard`}
+                />
+                {/* Remaining is gray (unseen) */}
+              </div>
+              
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mt-3 text-sm">
+                <div className="flex items-center gap-2" title="Streak 3+">
+                  <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                  <span className="text-slate-600">Mastered: <strong>{stats.mastered}</strong></span>
+                </div>
+                <div className="flex items-center gap-2" title="Streak 1-2">
+                  <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
+                  <span className="text-slate-600">Learning: <strong>{stats.learning}</strong></span>
+                </div>
+                <div className="flex items-center gap-2" title="Streak 0 or Hard">
+                  <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                  <span className="text-slate-600">Hard: <strong>{stats.hard}</strong></span>
+                </div>
+                 <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-slate-200"></div>
+                  <span className="text-slate-600">New: <strong>{stats.unseen}</strong></span>
+                </div>
+              </div>
+            </div>
+
             <div className="flex flex-col md:flex-row gap-4">
               {/* Search */}
               <div className="relative flex-1">

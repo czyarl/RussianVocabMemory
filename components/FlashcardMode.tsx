@@ -18,6 +18,7 @@ const STATS_KEY = 'ruvocab-progress';
 interface WordStats {
   difficulty: 'easy' | 'hard';
   lastReviewed: number;
+  streak: number; // Added streak for repetition logic
 }
 
 export const FlashcardMode: React.FC<FlashcardModeProps> = ({ 
@@ -34,32 +35,35 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
   const [loading, setLoading] = useState(true);
 
   // Helper to generate unique key based on direction
-  // This ensures RU->ZH and ZH->RU progress is stored separately
   const getStorageKey = (lemma: string) => `${direction}:${lemma}`;
 
-  // Initialize Session Items (Shuffle, Sequence, or Smart Sort)
+  // Initialize Session Items
   useEffect(() => {
     setLoading(true);
     let candidateItems = [...items]; // Copy array
     const statsStr = localStorage.getItem(STATS_KEY);
     const stats: Record<string, WordStats> = statsStr ? JSON.parse(statsStr) : {};
 
-    // 1. Filter logic
+    // 1. PRE-SHUFFLE for Smart/Random/Hard modes
+    // This solves the problem where "New" words appear in logical order (Jan, Feb, Mar)
+    // allowing users to guess context. We shuffle BEFORE scoring.
+    if (strategy !== 'sequential') {
+      candidateItems.sort(() => Math.random() - 0.5);
+    }
+
+    // 2. Filter logic for 'hard_only'
     if (strategy === 'hard_only') {
       candidateItems = candidateItems.filter(item => {
         const key = getStorageKey(item.lemma);
-        return stats[key]?.difficulty === 'hard';
+        const stat = stats[key];
+        // Hard is defined as explicit 'hard' OR streak reset to 0 after being seen
+        return stat && (stat.difficulty === 'hard' || stat.streak === 0);
       });
     }
 
-    // 2. Sort logic
-    if (strategy === 'random') {
-      candidateItems.sort(() => Math.random() - 0.5);
-    } else if (strategy === 'sequential') {
-      // Do nothing, preserve the original order from INITIAL_DATA (flattened)
-      // This allows users to learn words in the order they appear in the "book"
-    } else {
-      // Smart Sort OR Hard Only Sort (prioritize reviewed longest ago)
+    // 3. Sort logic
+    if (strategy === 'smart_sort') {
+      // Smart Cram Mode Logic with Streak
       const now = Date.now();
       const ONE_DAY = 24 * 60 * 60 * 1000;
 
@@ -70,28 +74,36 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
         const statB = stats[keyB];
         
         const getScore = (stat?: WordStats) => {
-          // Unseen words get medium priority (50)
-          // To make 'Smart Sort' behave like a learner, maybe prioritize unseen?
-          // For now, unseen is 50.
-          if (!stat) return 50; 
-          
-          let score = 0;
-          if (stat.difficulty === 'hard') score += 100;
-          
-          const daysSince = (now - stat.lastReviewed) / ONE_DAY;
-          score += daysSince * 5; 
+          // Score components:
+          // 1. New words (No stat): Priority High (but below active Hard) -> Score 500
+          // 2. Hard words (Streak 0): Priority Highest -> Score 1000+
+          // 3. Learning words (Streak 1-2): Priority Medium (Spaced Repetition) -> Score 700
+          // 4. Mastered words (Streak 3+): Priority Low -> Score 0-100 (based on time)
 
-          // If easy and seen recently, push to back
-          if (stat.difficulty === 'easy' && daysSince < 1) score -= 50;
+          if (!stat) return 500; 
+
+          // Hard / Reset words
+          if (stat.difficulty === 'hard' || stat.streak === 0) {
+             return 1000 + (now - stat.lastReviewed) / ONE_DAY;
+          }
+
+          // Learning Phase (Streak 1 or 2)
+          // We want to verify these again relatively soon to build the streak
+          if (stat.streak < 3) {
+             return 700 + (now - stat.lastReviewed) / ONE_DAY;
+          }
           
-          return score;
+          // Mastered Phase (Streak 3+)
+          // Push to back, sort by time since last review
+          const daysSince = (now - stat.lastReviewed) / ONE_DAY;
+          return daysSince; 
         };
 
         return getScore(statB) - getScore(statA);
       });
     }
 
-    // 3. Limit logic
+    // 4. Limit logic
     if (limit !== 'all') {
       candidateItems = candidateItems.slice(0, limit);
     }
@@ -100,7 +112,7 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
     setCurrentIndex(0);
     setIsFlipped(false);
     setLoading(false);
-  }, [items, strategy, limit, direction]); // Re-run if direction changes
+  }, [items, strategy, limit, direction]); 
 
   // Reset flip state when index changes
   useEffect(() => {
@@ -116,10 +128,18 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
       const stats: Record<string, WordStats> = statsStr ? JSON.parse(statsStr) : {};
       
       const key = getStorageKey(currentItem.lemma);
+      const currentStat = stats[key];
+      const currentStreak = currentStat?.streak || 0;
+
+      // Logic: 
+      // Hard -> Reset streak to 0
+      // Easy -> Increment streak
+      const newStreak = difficulty === 'hard' ? 0 : currentStreak + 1;
       
       stats[key] = {
         difficulty,
-        lastReviewed: Date.now()
+        lastReviewed: Date.now(),
+        streak: newStreak
       };
       
       localStorage.setItem(STATS_KEY, JSON.stringify(stats));
@@ -195,7 +215,6 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
         </button>
       </div>
 
-      {/* Show extra info only on back side if this is back */}
       {!isFrontRussian && (
          <div className="mb-6 w-full px-6">
             {currentItem.forms && (
@@ -231,7 +250,6 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
           {currentItem.translation}
         </h3>
         
-        {/* If this is back (Russian Front), show syntax note here for context */}
         {isFrontRussian && currentItem.syntax_note && (
           <div className="mt-4 px-4 py-2 bg-slate-50 rounded-lg border border-slate-200 text-slate-600 text-sm italic max-w-sm text-center">
             Note: {currentItem.syntax_note}
@@ -288,7 +306,7 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
           <div className="w-12 h-12 rounded-xl bg-white border-2 border-slate-200 flex items-center justify-center shadow-sm group-hover:border-red-200 group-hover:bg-red-50 group-hover:shadow-lg group-hover:-translate-y-1 transition-all duration-200">
             <X size={24} />
           </div>
-          <span className="text-xs font-bold uppercase tracking-wide">Hard</span>
+          <span className="text-xs font-bold uppercase tracking-wide">Hard / Forgot</span>
         </button>
 
         <button 
@@ -298,7 +316,7 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
           <div className="w-12 h-12 rounded-xl bg-white border-2 border-slate-200 flex items-center justify-center shadow-sm group-hover:border-green-200 group-hover:bg-green-50 group-hover:shadow-lg group-hover:-translate-y-1 transition-all duration-200">
             <Check size={24} />
           </div>
-          <span className="text-xs font-bold uppercase tracking-wide">Easy</span>
+          <span className="text-xs font-bold uppercase tracking-wide">Got it</span>
         </button>
       </div>
 
