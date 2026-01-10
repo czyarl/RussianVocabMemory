@@ -1,11 +1,21 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AIWordAnalysis, WordItem } from '../types';
 
+const getEnv = (key: string): string | undefined => {
+  if (typeof process !== 'undefined' && process.env) {
+    return process.env[key];
+  }
+  return undefined;
+};
+
 export const analyzeWordWithGemini = async (word: WordItem): Promise<AIWordAnalysis | null> => {
+  const apiKey = getEnv('API_KEY');
+  const openaiKey = getEnv('OPENAI_API_KEY');
+
   // 1. Try Gemini First
-  if (process.env.API_KEY) {
+  if (apiKey) {
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey });
       const prompt = `
         Analyze the Russian word "${word.lemma}".
         Context/Meaning: ${word.translation}.
@@ -47,7 +57,7 @@ export const analyzeWordWithGemini = async (word: WordItem): Promise<AIWordAnaly
   } 
   
   // 2. Fallback to OpenAI if OPENAI_API_KEY is present
-  else if (process.env.OPENAI_API_KEY) {
+  else if (openaiKey) {
     try {
        const prompt = `
         Analyze the Russian word "${word.lemma}".
@@ -65,7 +75,7 @@ export const analyzeWordWithGemini = async (word: WordItem): Promise<AIWordAnaly
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+          'Authorization': `Bearer ${openaiKey}`
         },
         body: JSON.stringify({
           model: "gpt-4o-mini", // Use a lightweight model

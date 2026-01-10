@@ -29,3 +29,5 @@ export interface AIWordAnalysis {
   exampleSentence: string;
   exampleTranslation: string;
 }
+
+export type ReviewStrategy = 'random' | 'smart_sort' | 'hard_only';

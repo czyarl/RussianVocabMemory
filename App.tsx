@@ -3,9 +3,7 @@ import { INITIAL_DATA, POS_LABELS } from './constants';
 import { WordCard } from './components/WordCard';
 import { FlashcardMode } from './components/FlashcardMode';
 import { Search, Layers, Book, Grid, List, Zap, Filter, Settings, Brain, ArrowRightLeft, ListFilter, Shuffle } from 'lucide-react';
-import { PartOfSpeech } from './types';
-
-export type ReviewStrategy = 'random' | 'smart_sort' | 'hard_only';
+import { PartOfSpeech, ReviewStrategy } from './types';
 
 const App: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState<string>('All');

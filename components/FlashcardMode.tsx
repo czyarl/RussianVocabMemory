@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { WordItem } from '../types';
+import { WordItem, ReviewStrategy } from '../types';
 import { Volume2, Check, X, Eye, BookOpen, RefreshCw } from 'lucide-react';
 import { POS_LABELS } from '../constants';
-import { ReviewStrategy } from '../App';
 
 interface FlashcardModeProps {
   items: WordItem[];
@@ -165,13 +164,13 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
       </div>
       
       <div className="flex flex-col items-center justify-center flex-1 w-full">
-        <h2 className="text-5xl font-bold text-slate-900 font-cyrillic text-center leading-tight break-words px-4">
+        <h2 className="text-4xl font-bold text-slate-900 font-cyrillic text-center leading-tight break-words px-4">
           {currentItem.lemma}
         </h2>
         
         <button 
           onClick={(e) => { e.stopPropagation(); playAudio(currentItem.lemma); }}
-          className="mt-5 p-3 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 hover:scale-110 transition-all shadow-sm"
+          className="mt-4 p-2.5 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 hover:scale-110 transition-all shadow-sm"
           title="Play Audio"
         >
           <Volume2 size={24} />
@@ -210,13 +209,13 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
         </div>
       )}
       <div className="flex flex-col items-center justify-center flex-1 w-full p-4">
-        <h3 className="text-4xl font-bold text-slate-800 text-center leading-relaxed break-words">
+        <h3 className="text-3xl font-bold text-slate-800 text-center leading-relaxed break-words">
           {currentItem.translation}
         </h3>
         
         {/* If this is back (Russian Front), show syntax note here for context */}
         {isFrontRussian && currentItem.syntax_note && (
-          <div className="mt-6 px-4 py-2 bg-slate-50 rounded-lg border border-slate-200 text-slate-600 text-sm italic max-w-sm text-center">
+          <div className="mt-4 px-4 py-2 bg-slate-50 rounded-lg border border-slate-200 text-slate-600 text-sm italic max-w-sm text-center">
             Note: {currentItem.syntax_note}
           </div>
         )}
@@ -225,10 +224,10 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
   );
 
   return (
-    <div className="w-full max-w-3xl mx-auto flex flex-col items-center justify-start min-h-[calc(100vh-140px)] p-4">
+    <div className="w-full max-w-2xl mx-auto flex flex-col items-center justify-start min-h-[calc(100vh-140px)] p-4">
       
       {/* Header Info */}
-      <div className="w-full flex justify-between items-center mb-6 text-slate-500 font-medium">
+      <div className="w-full flex justify-between items-center mb-4 text-slate-500 font-medium">
         <span className="bg-white px-3 py-1 rounded-full border border-slate-200 text-xs shadow-sm">
           Card {currentIndex + 1} / {sessionItems.length}
         </span>
@@ -238,23 +237,23 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
       </div>
 
       {/* Main Card Area */}
-      {/* Decreased height from 60vh to 50vh, and min-height from 500px to 400px */}
+      {/* Decreased height further to match "70% of current" request approx */}
       <div 
-        className="relative w-full h-[50vh] min-h-[400px] perspective-1000 group cursor-pointer"
+        className="relative w-full h-[400px] perspective-1000 group cursor-pointer"
         onClick={() => setIsFlipped(!isFlipped)}
       >
         <div className={`relative w-full h-full duration-500 transform-style-3d transition-transform ${isFlipped ? 'rotate-y-180' : ''}`}>
           
           {/* Front Face */}
-          <div className="absolute w-full h-full backface-hidden bg-white rounded-3xl shadow-xl border border-slate-200 flex flex-col items-center justify-between overflow-hidden">
+          <div className="absolute w-full h-full backface-hidden bg-white rounded-2xl shadow-lg border border-slate-200 flex flex-col items-center justify-between overflow-hidden">
              {isFrontRussian ? RussianContent : ChineseContent}
-             <div className="w-full py-3 bg-slate-50 border-t border-slate-100 text-slate-400 text-xs flex items-center justify-center gap-2">
+             <div className="w-full py-2.5 bg-slate-50 border-t border-slate-100 text-slate-400 text-xs flex items-center justify-center gap-2">
                <Eye size={14} /> Tap card to flip
              </div>
           </div>
 
           {/* Back Face */}
-          <div className="absolute w-full h-full backface-hidden rotate-y-180 bg-white rounded-3xl shadow-xl border border-blue-100 flex flex-col items-center justify-between overflow-hidden">
+          <div className="absolute w-full h-full backface-hidden rotate-y-180 bg-white rounded-2xl shadow-lg border border-blue-100 flex flex-col items-center justify-between overflow-hidden">
              <div className="absolute inset-0 bg-blue-50/30 pointer-events-none" />
              <div className="relative z-10 w-full h-full flex flex-col items-center">
                {isFrontRussian ? ChineseContent : RussianContent}
@@ -264,23 +263,23 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
       </div>
 
       {/* Controls */}
-      <div className="flex items-center gap-10 mt-8 w-full max-w-xs justify-center">
+      <div className="flex items-center gap-8 mt-6 w-full max-w-xs justify-center">
         <button 
           onClick={(e) => { e.stopPropagation(); handleNext('hard'); }}
-          className="flex flex-col items-center gap-2 text-slate-400 hover:text-red-500 transition-colors group flex-1"
+          className="flex flex-col items-center gap-1.5 text-slate-400 hover:text-red-500 transition-colors group flex-1"
         >
-          <div className="w-14 h-14 rounded-2xl bg-white border-2 border-slate-200 flex items-center justify-center shadow-sm group-hover:border-red-200 group-hover:bg-red-50 group-hover:shadow-lg group-hover:-translate-y-1 transition-all duration-200">
-            <X size={28} />
+          <div className="w-12 h-12 rounded-xl bg-white border-2 border-slate-200 flex items-center justify-center shadow-sm group-hover:border-red-200 group-hover:bg-red-50 group-hover:shadow-lg group-hover:-translate-y-1 transition-all duration-200">
+            <X size={24} />
           </div>
           <span className="text-xs font-bold uppercase tracking-wide">Hard</span>
         </button>
 
         <button 
           onClick={(e) => { e.stopPropagation(); handleNext('easy'); }}
-          className="flex flex-col items-center gap-2 text-slate-400 hover:text-green-600 transition-colors group flex-1"
+          className="flex flex-col items-center gap-1.5 text-slate-400 hover:text-green-600 transition-colors group flex-1"
         >
-          <div className="w-14 h-14 rounded-2xl bg-white border-2 border-slate-200 flex items-center justify-center shadow-sm group-hover:border-green-200 group-hover:bg-green-50 group-hover:shadow-lg group-hover:-translate-y-1 transition-all duration-200">
-            <Check size={28} />
+          <div className="w-12 h-12 rounded-xl bg-white border-2 border-slate-200 flex items-center justify-center shadow-sm group-hover:border-green-200 group-hover:bg-green-50 group-hover:shadow-lg group-hover:-translate-y-1 transition-all duration-200">
+            <Check size={24} />
           </div>
           <span className="text-xs font-bold uppercase tracking-wide">Easy</span>
         </button>
