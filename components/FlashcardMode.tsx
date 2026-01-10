@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { WordItem, ReviewStrategy } from '../types';
 import { Volume2, Check, X, Eye, BookOpen, RefreshCw } from 'lucide-react';
-import { POS_LABELS } from '../constants';
+import { POS_LABELS, CONJUGATION_LABELS } from '../constants';
 import { AudioVoice, speakRussian } from '../services/audioService';
 
 interface FlashcardModeProps {
@@ -195,9 +195,16 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
       </div>
 
       {!isFrontRussian && (
-         <div className="mb-6 w-full px-6">
+         <div className="mb-6 w-full px-6 flex flex-col items-center gap-2">
+            
+            {currentItem.grammar?.conjugation && (
+                 <div className="text-xs text-slate-600 font-medium bg-slate-100 px-3 py-1 rounded-full border border-slate-200">
+                    {CONJUGATION_LABELS[currentItem.grammar.conjugation] || currentItem.grammar.conjugation}
+                 </div>
+            )}
+
             {currentItem.forms && (
-                <div className="flex flex-wrap gap-2 justify-center mb-3">
+                <div className="flex flex-wrap gap-2 justify-center">
                   {currentItem.forms.map((f, i) => (
                     <span key={i} className="px-2 py-1 bg-slate-100 rounded-md text-xs font-cyrillic text-slate-600 border border-slate-200">
                       {f}

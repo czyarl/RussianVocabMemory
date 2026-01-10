@@ -1,8 +1,9 @@
+
 export type PartOfSpeech = 'noun' | 'verb' | 'adj' | 'adv' | 'pron' | 'prep' | 'num' | 'other';
 
 export interface Grammar {
   gender?: 'm' | 'f' | 'n';
-  conjugation?: 'I' | 'II';
+  conjugation?: '1' | '2' | 'mixed' | 'irregular' | string;
   reflexive?: boolean;
   plural_only?: boolean;
   special?: string;

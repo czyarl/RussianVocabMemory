@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Volume2, Sparkles, BookOpen, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { WordItem, AIWordAnalysis } from '../types';
-import { POS_LABELS } from '../constants';
+import { POS_LABELS, CONJUGATION_LABELS } from '../constants';
 import { analyzeWordWithGemini } from '../services/geminiService';
 import { AudioVoice, speakRussian } from '../services/audioService';
 
@@ -79,7 +79,7 @@ export const WordCard: React.FC<WordCardProps> = ({ item, layout = 'grid', selec
 
       {/* Details Section */}
       <div className={`flex-1 ${layout === 'list' ? 'md:w-1/3 md:border-l md:border-slate-100 md:pl-4' : 'mt-4 border-t border-slate-100 pt-3'}`}>
-        {(item.forms || item.syntax_note || item.grammar?.special) && (
+        {(item.forms || item.syntax_note || item.grammar?.special || item.grammar?.conjugation) && (
           <div className="space-y-2 text-sm">
             {item.forms && (
               <div className="flex flex-wrap gap-1">
@@ -93,7 +93,9 @@ export const WordCard: React.FC<WordCardProps> = ({ item, layout = 'grid', selec
             
             {item.grammar?.conjugation && (
                <div className="text-xs text-slate-500">
-                 Conjugation: <span className="font-semibold">{item.grammar.conjugation}</span>
+                 <span className="font-semibold text-slate-700">
+                    {CONJUGATION_LABELS[item.grammar.conjugation] || item.grammar.conjugation}
+                 </span>
                  {item.grammar.reflexive && <span className="ml-2 italic">(reflexive)</span>}
                </div>
             )}
