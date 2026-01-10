@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { INITIAL_DATA, POS_LABELS } from './constants';
 import { WordCard } from './components/WordCard';
 import { FlashcardMode } from './components/FlashcardMode';
-import { Search, Layers, Book, Grid, List, Zap, Filter, Settings, Brain, ArrowRightLeft, ListFilter, Shuffle } from 'lucide-react';
+import { Search, Layers, Book, Grid, List, Zap, Filter, Settings, Brain, ArrowRightLeft, ListFilter, Shuffle, SortAsc } from 'lucide-react';
 import { PartOfSpeech, ReviewStrategy } from './types';
 
 const App: React.FC = () => {
@@ -16,7 +16,7 @@ const App: React.FC = () => {
 
   // Study Settings
   const [studyDirection, setStudyDirection] = useState<'ru-zh' | 'zh-ru'>('ru-zh');
-  const [reviewStrategy, setReviewStrategy] = useState<ReviewStrategy>('smart_sort');
+  const [reviewStrategy, setReviewStrategy] = useState<ReviewStrategy>('sequential');
   const [cardLimit, setCardLimit] = useState<number | 'all'>('all');
 
   // Flatten items for easy filtering
@@ -103,13 +103,16 @@ const App: React.FC = () => {
                         onChange={(e) => setReviewStrategy(e.target.value as ReviewStrategy)}
                         className="appearance-none pl-8 pr-8 py-1.5 rounded-lg text-xs font-medium bg-slate-50 border border-slate-200 hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100 cursor-pointer text-slate-700"
                       >
+                        <option value="sequential">Sequential (Default Order)</option>
                         <option value="random">Shuffle (Random)</option>
                         <option value="smart_sort">Smart Priority</option>
                         <option value="hard_only">Hard Only</option>
                       </select>
                       <div className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
                         {reviewStrategy === 'random' ? <Shuffle size={12} /> : 
-                         reviewStrategy === 'smart_sort' ? <Brain size={12} /> : <Filter size={12} />}
+                         reviewStrategy === 'smart_sort' ? <Brain size={12} /> : 
+                         reviewStrategy === 'sequential' ? <SortAsc size={12} /> :
+                         <Filter size={12} />}
                       </div>
                     </div>
                   </div>

@@ -33,31 +33,46 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
   const [sessionItems, setSessionItems] = useState<WordItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Initialize Session Items (Shuffle or Smart Sort)
+  // Helper to generate unique key based on direction
+  // This ensures RU->ZH and ZH->RU progress is stored separately
+  const getStorageKey = (lemma: string) => `${direction}:${lemma}`;
+
+  // Initialize Session Items (Shuffle, Sequence, or Smart Sort)
   useEffect(() => {
     setLoading(true);
-    let candidateItems = [...items];
+    let candidateItems = [...items]; // Copy array
     const statsStr = localStorage.getItem(STATS_KEY);
     const stats: Record<string, WordStats> = statsStr ? JSON.parse(statsStr) : {};
 
     // 1. Filter logic
     if (strategy === 'hard_only') {
-      candidateItems = candidateItems.filter(item => stats[item.lemma]?.difficulty === 'hard');
+      candidateItems = candidateItems.filter(item => {
+        const key = getStorageKey(item.lemma);
+        return stats[key]?.difficulty === 'hard';
+      });
     }
 
     // 2. Sort logic
     if (strategy === 'random') {
       candidateItems.sort(() => Math.random() - 0.5);
+    } else if (strategy === 'sequential') {
+      // Do nothing, preserve the original order from INITIAL_DATA (flattened)
+      // This allows users to learn words in the order they appear in the "book"
     } else {
       // Smart Sort OR Hard Only Sort (prioritize reviewed longest ago)
       const now = Date.now();
       const ONE_DAY = 24 * 60 * 60 * 1000;
 
       candidateItems.sort((a, b) => {
-        const statA = stats[a.lemma];
-        const statB = stats[b.lemma];
+        const keyA = getStorageKey(a.lemma);
+        const keyB = getStorageKey(b.lemma);
+        const statA = stats[keyA];
+        const statB = stats[keyB];
         
         const getScore = (stat?: WordStats) => {
+          // Unseen words get medium priority (50)
+          // To make 'Smart Sort' behave like a learner, maybe prioritize unseen?
+          // For now, unseen is 50.
           if (!stat) return 50; 
           
           let score = 0;
@@ -66,6 +81,7 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
           const daysSince = (now - stat.lastReviewed) / ONE_DAY;
           score += daysSince * 5; 
 
+          // If easy and seen recently, push to back
           if (stat.difficulty === 'easy' && daysSince < 1) score -= 50;
           
           return score;
@@ -84,7 +100,7 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
     setCurrentIndex(0);
     setIsFlipped(false);
     setLoading(false);
-  }, [items, strategy, limit]); 
+  }, [items, strategy, limit, direction]); // Re-run if direction changes
 
   // Reset flip state when index changes
   useEffect(() => {
@@ -95,11 +111,13 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
 
   const handleNext = (difficulty?: 'easy' | 'hard') => {
     if (difficulty && currentItem) {
-      // Save stats to localStorage
+      // Save stats to localStorage with Direction Prefix
       const statsStr = localStorage.getItem(STATS_KEY);
       const stats: Record<string, WordStats> = statsStr ? JSON.parse(statsStr) : {};
       
-      stats[currentItem.lemma] = {
+      const key = getStorageKey(currentItem.lemma);
+      
+      stats[key] = {
         difficulty,
         lastReviewed: Date.now()
       };
@@ -133,7 +151,7 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
         <h3 className="text-2xl font-bold text-slate-800 mb-2">No items to review!</h3>
         <p className="text-slate-600 mb-8">
           {strategy === 'hard_only' 
-            ? "You don't have any words marked as 'Hard' matching your current filter. Great job!" 
+            ? `You don't have any words marked as 'Hard' for ${direction === 'ru-zh' ? 'Russian -> Chinese' : 'Chinese -> Russian'}. Great job!` 
             : "No words match your criteria."}
         </p>
         <div className="flex gap-4">
@@ -237,7 +255,6 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
       </div>
 
       {/* Main Card Area */}
-      {/* Decreased height further to match "70% of current" request approx */}
       <div 
         className="relative w-full h-[400px] perspective-1000 group cursor-pointer"
         onClick={() => setIsFlipped(!isFlipped)}

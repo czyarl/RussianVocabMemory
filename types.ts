@@ -30,4 +30,4 @@ export interface AIWordAnalysis {
   exampleTranslation: string;
 }
 
-export type ReviewStrategy = 'random' | 'smart_sort' | 'hard_only';
+export type ReviewStrategy = 'random' | 'smart_sort' | 'hard_only' | 'sequential';
