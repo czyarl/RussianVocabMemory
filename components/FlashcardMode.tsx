@@ -110,7 +110,7 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
     setIsWorkloadCapped(isCapped);
 
     // 3. Define Base Weights
-    // New: If capped 0, else 80
+    // New: If capped 0, else 40
     // Hard: High priority (100)
     // Learning: Medium priority (60)
     // Mastered: Low priority (5)
@@ -150,14 +150,6 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
 
     // 5. Select Group (Weighted Random)
     if (totalWeight <= 0) {
-       // Fallback: If everything is 0 (e.g., only new words exist but we are capped),
-       // we might be in a deadlock. If so, return null to finish session.
-       // OR, if we are capped but have no other cards, we MUST show something? 
-       // Actually, if activeLoad > threshold, we have Hard/Learning cards. 
-       // So totalWeight=0 implies No Hard, No Learning, No Mastered, AND New is locked?
-       // That's impossible unless threshold is 0. 
-       // Edge case: Only Mastered cards exist. Base weight 5 > 0.
-       // Edge case: Only New cards exist. If capped, weight 0. Wait, if only New exist, activeLoad is 0, so not capped.
        return null;
     }
 
@@ -173,23 +165,17 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
       randomPointer -= w;
     }
 
-    // Update Staleness State for the chosen group
-    // We do this via a return value or side effect outside render. 
-    // Since this is called in event handler or effect, we can return the group type too.
-
     // 6. Select Item Within Group (Queue-like + Randomness)
     const candidates = groups[selectedGroup];
     
-    // Sort logic: "Insert at back" means we want the ones with OLDEST lastReviewed (or None) at the front (index 0).
-    // Sort Ascending by lastReviewed.
+    // Sort logic: Oldest lastReviewed (or None) first.
     candidates.sort((a, b) => {
       const timeA = stats[getStorageKey(a.lemma)]?.lastReviewed || 0;
       const timeB = stats[getStorageKey(b.lemma)]?.lastReviewed || 0;
-      return timeA - timeB; // Oldest (smallest timestamp) first
+      return timeA - timeB; 
     });
 
-    // "Fixed sequence but with a bit of randomness"
-    // We pick from the top N candidates (e.g., top 3 oldest items)
+    // Pick from the top N candidates (e.g., top 3 oldest items) to add variety
     const poolSize = Math.min(candidates.length, 3);
     const randomIndex = Math.floor(Math.random() * poolSize);
     
@@ -210,7 +196,6 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
       const result = selectNextSmartCard();
       if (result) {
         setCurrentCard(result.item);
-        // Initial tick update not strictly needed for display, but helps logic consistency
         setGroupLastPicked(prev => ({ ...prev, [result.group]: 0 }));
       }
       setLoading(false);
@@ -228,8 +213,7 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
       } else if (strategy === 'random') {
         pool.sort(() => Math.random() - 0.5);
       }
-      // 'sequential' does nothing (keeps order)
-
+      
       if (limit !== 'all') {
         pool = pool.slice(0, limit);
       }
@@ -239,7 +223,7 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
       setCurrentCard(pool[0] || null);
       setLoading(false);
     }
-  }, [items, strategy, limit, direction, learningThreshold]); // Removed selectNextSmartCard from dep to avoid loop
+  }, [items, strategy, limit, direction, learningThreshold]); 
 
   // --- Reset UI on card change ---
   useEffect(() => {
@@ -327,7 +311,7 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
 
   // --- Dashboard Stats (Reactive) ---
   const scopeStats = useMemo(() => {
-    const stats = getStats(); // Will run when 'tick' changes (via handleNext updates)
+    const stats = getStats(); 
     let counts = { new: 0, hard: 0, learning: 0, mastered: 0 };
     
     items.forEach(item => {
@@ -549,8 +533,10 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
           {/* Back Face */}
           <div className="absolute w-full h-full backface-hidden rotate-y-180 bg-white rounded-2xl shadow-lg border border-blue-200 flex flex-col items-center overflow-hidden">
              <div className="absolute inset-0 bg-slate-50/50 pointer-events-none" />
-             <div className="relative z-10 w-full h-full flex flex-col items-center">
-                {renderRichRussianDetails(true)}
+             <div className="relative z-10 w-full h-full overflow-y-auto no-scrollbar">
+                <div className="min-h-full w-full flex flex-col items-center justify-center py-6">
+                   {renderRichRussianDetails(true)}
+                </div>
              </div>
           </div>
         </div>
