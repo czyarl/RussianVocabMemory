@@ -50,6 +50,9 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
     mastered: 0
   });
 
+  // History Buffer to prevent immediate repetition
+  const recentHistoryRef = useRef<string[]>([]);
+
   // For Non-Smart Strategies (Static Queue)
   const [staticQueue, setStaticQueue] = useState<WordItem[]>([]);
   const [staticIndex, setStaticIndex] = useState(0);
@@ -75,6 +78,17 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
   const selectNextSmartCard = useCallback(() => {
     const stats = getStats();
     
+    // 0. Filter out recently reviewed items from the candidate pool
+    // unless we are running out of items completely.
+    let candidatesPool = items.filter(item => 
+      !recentHistoryRef.current.includes(getStorageKey(item.lemma))
+    );
+
+    // Fallback: If filtering clears everything (e.g. only 3 items total in list), use all items
+    if (candidatesPool.length === 0) {
+      candidatesPool = [...items];
+    }
+
     // 1. Bucketize Items
     const groups: Record<GroupType, WordItem[]> = {
       new: [],
@@ -83,9 +97,22 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
       mastered: []
     };
 
+    // We calculate active load based on ALL items, not just candidates, to ensure cap logic is correct
     let activeLoadCount = 0;
-
     items.forEach(item => {
+      const s = stats[getStorageKey(item.lemma)];
+      if (s) {
+        const { streak, difficulty } = s;
+        if (difficulty === 'hard' || streak === 0 || streak < 3) {
+           activeLoadCount++;
+        }
+      }
+    });
+    const isCapped = activeLoadCount >= learningThreshold;
+    setIsWorkloadCapped(isCapped);
+
+    // Distribute CANDIDATES into groups
+    candidatesPool.forEach(item => {
       const key = getStorageKey(item.lemma);
       const s = stats[key];
 
@@ -95,53 +122,41 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
         const { streak, difficulty } = s;
         if (difficulty === 'hard' || streak === 0) {
           groups.hard.push(item);
-          activeLoadCount++;
         } else if (streak < 3) {
           groups.learning.push(item);
-          activeLoadCount++;
         } else {
           groups.mastered.push(item);
         }
       }
     });
 
-    // 2. Check Load Cap
-    const isCapped = activeLoadCount >= learningThreshold;
-    setIsWorkloadCapped(isCapped);
-
     // 3. Define Base Weights
-    // New: If capped 0, else 80
-    // Hard: High priority (100)
-    // Learning: Medium priority (60)
-    // Mastered: Low priority (2)
     const baseWeights: Record<GroupType, number> = {
       new: isCapped ? 0 : 80,
       hard: 100,
       learning: 60,
-      mastered: 2
+      mastered: 5 // Lowered mastered weight slightly to prioritize learning
     };
 
     // 4. Calculate Final Weights with Staleness Bonus
-    // Formula: Base + (CurrentTick - LastPickedTick) * Bonus
-    // This ensures if 'mastered' hasn't been picked for 100 ticks, it gets +200 weight
     const STALENESS_BONUS = 2; 
     const finalWeights: Record<string, number> = {};
     let totalWeight = 0;
 
     (Object.keys(groups) as GroupType[]).forEach(type => {
+      // If group is empty (either naturally or because all its members are in history), weight is 0
       if (groups[type].length === 0) {
         finalWeights[type] = 0;
         return;
       }
 
-      // If New is strictly 0 (capped), it stays 0 regardless of staleness
+      // If New is strictly 0 (capped), it stays 0
       if (type === 'new' && isCapped) {
         finalWeights[type] = 0;
         return;
       }
 
       const staleness = tick - groupLastPicked[type];
-      // Prevent negative staleness if tick reset
       const safeStaleness = Math.max(0, staleness); 
       
       finalWeights[type] = baseWeights[type] + (safeStaleness * STALENESS_BONUS);
@@ -150,6 +165,9 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
 
     // 5. Select Group (Weighted Random)
     if (totalWeight <= 0) {
+       // This can happen if only 'new' items exist but we are capped. 
+       // In that edge case, force pick 'new' if available, otherwise null.
+       if (groups.new.length > 0) return { item: groups.new[0], group: 'new' as GroupType };
        return null;
     }
 
@@ -165,21 +183,22 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
       randomPointer -= w;
     }
 
-    // 6. Select Item Within Group (Queue-like + Randomness)
-    const candidates = groups[selectedGroup];
+    // 6. Select Item Within Group
+    const groupCandidates = groups[selectedGroup];
     
     // Sort logic: Oldest lastReviewed (or None) first.
-    candidates.sort((a, b) => {
+    // Since we already filtered history, these are all "valid" candidates.
+    groupCandidates.sort((a, b) => {
       const timeA = stats[getStorageKey(a.lemma)]?.lastReviewed || 0;
       const timeB = stats[getStorageKey(b.lemma)]?.lastReviewed || 0;
       return timeA - timeB; 
     });
 
-    // Pick from the top N candidates (e.g., top 3 oldest items) to add variety
-    const poolSize = Math.min(candidates.length, 3);
+    // Pick from the top N candidates to add variety
+    const poolSize = Math.min(groupCandidates.length, 3);
     const randomIndex = Math.floor(Math.random() * poolSize);
     
-    return { item: candidates[randomIndex], group: selectedGroup };
+    return { item: groupCandidates[randomIndex], group: selectedGroup };
 
   }, [items, getStats, getStorageKey, learningThreshold, tick, groupLastPicked]);
 
@@ -191,6 +210,7 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
     setSessionFinished(false);
     setTick(0);
     setGroupLastPicked({ new: 0, hard: 0, learning: 0, mastered: 0 });
+    recentHistoryRef.current = []; // Clear history on start
 
     if (strategy === 'smart_sort') {
       const result = selectNextSmartCard();
@@ -237,7 +257,17 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
   const handleNext = (difficulty?: 'easy' | 'hard') => {
     if (!currentCard) return;
 
-    // 1. Update Stats
+    // 1. Update History Buffer (Smart Sort Only)
+    if (strategy === 'smart_sort') {
+      const key = getStorageKey(currentCard.lemma);
+      const history = recentHistoryRef.current;
+      // Add to end
+      history.push(key);
+      // Keep last 4 items
+      if (history.length > 4) history.shift();
+    }
+
+    // 2. Update Stats
     if (difficulty) {
       const stats = getStats();
       const key = getStorageKey(currentCard.lemma);
@@ -255,7 +285,7 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
       localStorage.setItem(STATS_KEY, JSON.stringify(stats));
     }
 
-    // 2. Check Session Limit
+    // 3. Check Session Limit
     const newCount = reviewedCount + 1;
     setReviewedCount(newCount);
     
@@ -264,7 +294,7 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
       return;
     }
 
-    // 3. Select Next Card
+    // 4. Select Next Card
     setIsFlipped(false);
     
     // Advance global tick
