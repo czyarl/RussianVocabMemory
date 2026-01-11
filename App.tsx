@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { INITIAL_DATA, POS_LABELS } from './constants';
 import { WordCard } from './components/WordCard';
 import { FlashcardMode } from './components/FlashcardMode';
-import { Search, Layers, Book, Grid, List, Zap, Filter, Settings, Brain, ArrowRightLeft, ListFilter, Shuffle, SortAsc, PieChart, Trash2, Volume2 } from 'lucide-react';
+import { Search, Layers, Book, Grid, List, Zap, Filter, Settings, Brain, ArrowRightLeft, ListFilter, Shuffle, SortAsc, PieChart, Trash2, Volume2, Activity } from 'lucide-react';
 import { PartOfSpeech, ReviewStrategy } from './types';
 import { getBrowserVoices, AudioVoice, GOOGLE_VOICE_URI } from './services/audioService';
 
@@ -61,6 +61,7 @@ const App: React.FC = () => {
   const [studyDirection, setStudyDirection] = useState<'ru-zh' | 'zh-ru'>('ru-zh');
   const [reviewStrategy, setReviewStrategy] = useState<ReviewStrategy>('smart_sort');
   const [cardLimit, setCardLimit] = useState<number | 'all'>('all');
+  const [learningThreshold, setLearningThreshold] = useState<number>(30); // Default threshold for active words
 
   // Flatten items for easy filtering
   const allItems = useMemo(() => {
@@ -286,6 +287,26 @@ const App: React.FC = () => {
                     </div>
                   </div>
 
+                   {/* Learning Threshold (Load Cap) */}
+                   <div className="flex items-center gap-2">
+                    <label className="text-xs text-slate-500 font-semibold uppercase hidden sm:block">Load:</label>
+                    <div className="relative" title="Max active (learning + hard) words allowed before stopping new words">
+                      <select
+                        value={learningThreshold}
+                        onChange={(e) => setLearningThreshold(Number(e.target.value))}
+                        className="appearance-none pl-8 pr-8 py-1.5 rounded-lg text-xs font-medium bg-slate-50 border border-slate-200 hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100 cursor-pointer text-slate-700"
+                      >
+                        <option value="15">15 Active</option>
+                        <option value="30">30 Active</option>
+                        <option value="50">50 Active</option>
+                        <option value="10000">No Limit</option>
+                      </select>
+                      <div className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                        <Activity size={12} />
+                      </div>
+                    </div>
+                  </div>
+
                 </div>
              </div>
            </div>
@@ -299,6 +320,7 @@ const App: React.FC = () => {
                   direction={studyDirection}
                   strategy={reviewStrategy}
                   limit={cardLimit}
+                  learningThreshold={learningThreshold}
                   selectedVoice={currentVoiceObject}
                   onResetFilter={() => {
                     setReviewStrategy('smart_sort');

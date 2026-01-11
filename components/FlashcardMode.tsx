@@ -12,6 +12,7 @@ interface FlashcardModeProps {
   limit: number | 'all';
   onResetFilter: () => void;
   selectedVoice: AudioVoice | null;
+  learningThreshold?: number; // Added threshold prop
 }
 
 // LocalStorage Key
@@ -20,7 +21,7 @@ const STATS_KEY = 'ruvocab-progress';
 interface WordStats {
   difficulty: 'easy' | 'hard';
   lastReviewed: number;
-  streak: number; // Added streak for repetition logic
+  streak: number; 
 }
 
 export const FlashcardMode: React.FC<FlashcardModeProps> = ({ 
@@ -30,7 +31,8 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
   strategy,
   limit,
   onResetFilter,
-  selectedVoice
+  selectedVoice,
+  learningThreshold = 30 // Default to 30 if not provided
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
@@ -47,48 +49,94 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
     const statsStr = localStorage.getItem(STATS_KEY);
     const stats: Record<string, WordStats> = statsStr ? JSON.parse(statsStr) : {};
 
-    // 1. PRE-SHUFFLE for Smart/Random/Hard modes
-    if (strategy !== 'sequential') {
-      candidateItems.sort(() => Math.random() - 0.5);
-    }
-
-    // 2. Filter logic for 'hard_only'
+    // 1. Filter logic for 'hard_only'
     if (strategy === 'hard_only') {
       candidateItems = candidateItems.filter(item => {
         const key = getStorageKey(item.lemma);
         const stat = stats[key];
         return stat && (stat.difficulty === 'hard' || stat.streak === 0);
       });
+      // Simple shuffle for hard only
+      candidateItems.sort(() => Math.random() - 0.5);
+    } 
+    // 2. Sequential (No Sort)
+    else if (strategy === 'sequential') {
+      // Do nothing, keep original order
     }
-
-    // 3. Sort logic for Smart Cram
-    if (strategy === 'smart_sort') {
+    // 3. Random (Simple Shuffle)
+    else if (strategy === 'random') {
+      candidateItems.sort(() => Math.random() - 0.5);
+    }
+    // 4. SMART SORT (Probabilistic + Workload Cap)
+    else if (strategy === 'smart_sort') {
       const now = Date.now();
       const ONE_DAY = 24 * 60 * 60 * 1000;
 
-      candidateItems.sort((a, b) => {
-        const keyA = getStorageKey(a.lemma);
-        const keyB = getStorageKey(b.lemma);
-        const statA = stats[keyA];
-        const statB = stats[keyB];
-        
-        const getScore = (stat?: WordStats) => {
-          if (!stat) return 500; 
-          if (stat.difficulty === 'hard' || stat.streak === 0) {
-             return 1000 + (now - stat.lastReviewed) / ONE_DAY;
-          }
-          if (stat.streak < 3) {
-             return 700 + (now - stat.lastReviewed) / ONE_DAY;
-          }
-          const daysSince = (now - stat.lastReviewed) / ONE_DAY;
-          return daysSince; 
-        };
-
-        return getScore(statB) - getScore(statA);
+      // --- WORKLOAD MANAGEMENT CHECK ---
+      // Count how many items are currently in "Active Learning" or "Hard" state
+      let activeCount = 0;
+      candidateItems.forEach(item => {
+        const stat = stats[getStorageKey(item.lemma)];
+        if (stat) {
+          const isHard = stat.difficulty === 'hard' || stat.streak === 0;
+          const isLearning = stat.streak > 0 && stat.streak < 3;
+          if (isHard || isLearning) activeCount++;
+        }
       });
+
+      // If active load is too high, exclude NEW words from this session
+      const capReached = activeCount >= learningThreshold;
+      
+      if (capReached) {
+        // Filter out words with NO stats (New words)
+        // Keep only words that have some history (Hard, Learning, or Mastered)
+        const previousLength = candidateItems.length;
+        candidateItems = candidateItems.filter(item => !!stats[getStorageKey(item.lemma)]);
+        console.log(`Workload Cap Reached (${activeCount} >= ${learningThreshold}). Removed ${previousLength - candidateItems.length} new words.`);
+      }
+
+      // --- PROBABILISTIC SORTING ---
+      // Assign weights and use weighted random shuffle
+      candidateItems = candidateItems.map(item => {
+        const stat = stats[getStorageKey(item.lemma)];
+        
+        // --- WEIGHT CALCULATION LOGIC ---
+        let weight = 0;
+        
+        if (!stat) {
+           // NEW Word
+           // Base weight: 40.
+           weight = 40; 
+        } else {
+           const daysSince = (now - stat.lastReviewed) / ONE_DAY;
+           
+           if (stat.difficulty === 'hard' || stat.streak === 0) {
+             // HARD / FORGOTTEN
+             // Base: 100. Increases rapidly with time.
+             weight = 100 + (daysSince * 20);
+           } else if (stat.streak < 3) {
+             // LEARNING (Streak 1-2)
+             // Base: 60. Increases moderately with time.
+             weight = 60 + (daysSince * 10);
+           } else {
+             // MASTERED (Streak 3+)
+             // Base: 5. Increases slowly (Spaced Repetition style).
+             // We want these to appear only after some time.
+             // e.g., if daysSince is 0.1, weight is ~5. If daysSince is 30, weight is ~20.
+             weight = 5 + (daysSince * 0.5);
+           }
+        }
+
+        // Apply random factor to weight to create probability distribution
+        // "Weighted Random Sampling" approximation: 
+        // Sorting by (Weight * Random) is a simple way to shuffle based on weights.
+        return { item, sortScore: weight * Math.random() };
+      })
+      .sort((a, b) => b.sortScore - a.sortScore) // Descending sort by weighted score
+      .map(wrapper => wrapper.item);
     }
 
-    // 4. Limit logic
+    // 5. Limit logic
     if (limit !== 'all') {
       candidateItems = candidateItems.slice(0, limit);
     }
@@ -97,7 +145,7 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
     setCurrentIndex(0);
     setIsFlipped(false);
     setLoading(false);
-  }, [items, strategy, limit, direction]); 
+  }, [items, strategy, limit, direction, learningThreshold]); 
 
   // Reset flip state when index changes
   useEffect(() => {

@@ -159,7 +159,7 @@ export const INITIAL_DATA: Category[] = [
     ]
   },
   {
-    "category": "Nouns (People & Family) (名词：人、家庭、动物)",
+    "category": "Nouns (People & Family) (名词：人、家庭)",
     "items": [
       { "lemma": "преподава́тельница", "translation": "大学女老师", "pos": "noun", "grammar": { "gender": "f" }, "syntax_note": "笔记补充：(中、高等学校)教师，教员" },
       { "lemma": "студе́нтка", "translation": "女大学生", "pos": "noun", "grammar": { "gender": "f" }, "syntax_note": "" },
