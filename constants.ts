@@ -43,7 +43,9 @@ export const INITIAL_DATA: Category[] = [
       { "lemma": "ваш", "translation": "你们的", "pos": "pron", "grammar": {} },
       { "lemma": "э́тот", "translation": "这个", "pos": "pron", "grammar": {} },
       { "lemma": "тот", "translation": "那个", "pos": "pron", "grammar": {} },
-      { "lemma": "свой", "translation": "自己的", "pos": "pron", "grammar": {} }
+      { "lemma": "свой", "translation": "自己的", "pos": "pron", "grammar": {} },
+      { "lemma": "тако́й", "translation": "这样的", "pos": "adj",  "grammar": { "gender": "m" }, "syntax_note": "指示代词/形容词" },
+      { "lemma": "весь", "translation": "一切，全部，整个", "pos": "adj", "forms": ["вся", "всё", "все"], "grammar": { "gender": "m" },"syntax_note": "限定代词",},
     ]
   },
   {
@@ -132,6 +134,7 @@ export const INITIAL_DATA: Category[] = [
       { "lemma": "покупа́ть", "translation": "购买", "pos": "verb", "forms": ["покупа́ю", "покупа́ешь"], "grammar": { "conjugation": "1" }, "syntax_note": "vt" },
       { "lemma": "петь", "translation": "唱", "pos": "verb", "forms": ["пою́", "поёшь"], "grammar": { "conjugation": "1" }, "syntax_note": "" },
       { "lemma": "разгова́ривать", "translation": "交谈", "pos": "verb", "forms": ["разгова́риваю", "разгова́риваешь"], "grammar": { "conjugation": "1" }, "syntax_note": "" },
+      { "lemma": "расска́зывать", "translation": "讲述，讲故事", "pos": "verb", "forms": ["расска́зываю", "расска́зываешь"], "grammar": { "conjugation": "1" }, "syntax_note": "vt. (+ о 6g)" },
       { "lemma": "рабо́тать", "translation": "工作", "pos": "verb", "forms": ["рабо́таю", "рабо́таешь"], "grammar": { "conjugation": "1" }, "syntax_note": "" },
       { "lemma": "роди́ться", "translation": "出生", "pos": "verb", "forms": ["роди́лся", "родила́сь"], "grammar": { "conjugation": "2" }, "syntax_note": "常用过去时" },
       { "lemma": "сказа́ть", "translation": "说 (完成体)", "pos": "verb", "forms": ["скажу́", "ска́жешь"], "grammar": { "conjugation": "1" }, "syntax_note": "命令式: скажи́" },
@@ -387,6 +390,14 @@ export const INITIAL_DATA: Category[] = [
   {
     "category": "Adjectives (形容词)",
     "items": [
+      { "lemma": "шко́льный", "translation": "中小学的", "pos": "adj","grammar": { "gender": "m" },"syntax_note": ""},
+      { "lemma": "зи́мний", "translation": "冬天的；冬季用的","pos": "adj","grammar": { "gender": "m", "special": "soft" },"syntax_note": ""},
+      {"lemma": "лё́тний", "translation": "夏天的","pos": "adj","grammar": { "gender": "m", "special": "soft" },"syntax_note": ""},
+      {"lemma": "торго́вый","translation": "贸易的","pos": "adj","grammar": { "gender": "m" },"syntax_note": ""},
+      { "lemma": "истори́ческий", "translation": "历史的", "pos": "adj", "grammar": { "gender": "m" }, "syntax_note": "笔记补充：(历史上的)"},
+      { "lemma": "ка́ждый","translation": "每个，每","pos": "adj","grammar": { "gender": "m" },"syntax_note": "代词性形容词"},
+      {"lemma": "родно́й","translation": "家乡的；亲爱的","pos": "adj","grammar": { "gender": "m" },"syntax_note": ""},
+      {"lemma": "знамени́тый","translation": "著名的","pos": "adj","grammar": { "gender": "m" },"syntax_note": ""},
       { "lemma": "рабо́чий", "translation": "工人的/工作的", "pos": "adj", "grammar": {} },
       { "lemma": "вече́рний", "translation": "晚上的", "pos": "adj", "grammar": {} },
       { "lemma": "сре́дний", "translation": "中间的/中等的", "pos": "adj", "grammar": {} },
