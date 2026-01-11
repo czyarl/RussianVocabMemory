@@ -380,7 +380,11 @@ export const INITIAL_DATA: Category[] = [
       { "lemma": "часы́", "translation": "钟表/手表", "pos": "noun", "grammar": { "plural_only": true }},
       { "lemma": "футбо́л", "translation": "足球", "pos": "noun", "grammar": { "gender": "m" }, "syntax_note": "" },
       { "lemma": "сло́во", "translation": "单词", "pos": "noun", "grammar": { "gender": "n"}, "syntax_note": "" },
-      { "lemma": "цена́", "translation": "价格", "pos": "noun", "grammar": { "gender": "f" }, "syntax_note": "" }
+      { "lemma": "цена́", "translation": "价格", "pos": "noun", "grammar": { "gender": "f" }, "syntax_note": "" },
+      { "lemma": "компью́тер", "translation": "电脑", "pos": "noun", "grammar": { "gender": "m" }, "syntax_note": "" },
+      { "lemma": "телефо́н", "translation": "电话", "pos": "noun", "grammar": { "gender": "m" }, "syntax_note": "" },
+      { "lemma": "фильм", "translation": "影片", "pos": "noun", "grammar": { "gender": "m" }, "syntax_note": "" },
+      { "lemma": "рю́мка", "translation": "高脚酒杯", "pos": "noun", "grammar": { "gender": "f" }, "syntax_note": "" }
     ]
   },
   {
@@ -396,6 +400,7 @@ export const INITIAL_DATA: Category[] = [
       { "lemma": "спорт", "translation": "体育", "pos": "noun", "grammar": { "gender": "m" }, "syntax_note": "笔记：运动" },
       { "lemma": "пого́да", "translation": "天气", "pos": "noun", "grammar": { "gender": "f" } },
       { "lemma": "де́рево", "translation": "树", "pos": "noun", "grammar": { "gender": "n" } },
+      { "lemma": "о́зеро", "translation": "湖", "pos": "noun", "grammar": { "gender": "n" }, "syntax_note": ""},
       { "lemma": "снег", "translation": "雪", "pos": "noun", "grammar": { "gender": "m" } },
       { "lemma": "фи́рма", "translation": "公司", "pos": "noun", "grammar": { "gender": "f" }, "syntax_note": "" },
       { "lemma": "ле́кция", "translation": "(大学的)讲课，讲座", "pos": "noun", "grammar": { "gender": "f" }, "syntax_note": "" },
@@ -403,7 +408,18 @@ export const INITIAL_DATA: Category[] = [
       { "lemma": "специа́льность", "translation": "专业", "pos": "noun", "grammar": { "gender": "f" }, "syntax_note": "图片标注：[阴]" },
       { "lemma": "литерату́ра", "translation": "文学", "pos": "noun", "grammar": { "gender": "f" }, "syntax_note": "" },
       { "lemma": "видеофи́льм", "translation": "影视剧", "pos": "noun", "grammar": { "gender": "m" }, "syntax_note": "" },
-      { "lemma": "расска́з", "translation": "讲述；故事；短篇小说", "pos": "noun", "grammar": { "gender": "m" }, "syntax_note": "" }
+      { "lemma": "расска́з", "translation": "讲述；故事；短篇小说", "pos": "noun", "grammar": { "gender": "m" }, "syntax_note": "" },
+      { "lemma": "язы́к", "translation": "语言；舌头", "pos": "noun", "grammar": { "gender": "m" }, "syntax_note": "" },
+      { "lemma": "сча́стье", "translation": "幸福", "pos": "noun", "grammar": { "gender": "n" }, "syntax_note": "" },
+      { "lemma": "мир", "translation": "和平；世界", "pos": "noun", "grammar": { "gender": "m" }, "syntax_note": "" },
+      { "lemma": "и́мя", "translation": "名字", "pos": "noun", "grammar": { "gender": "n", "special": "-мя" }, "syntax_note": "" },
+      { "lemma": "собра́ние", "translation": "会议", "pos": "noun", "grammar": { "gender": "n" }, "syntax_note": "图片标注：(中)" },
+      { "lemma": "Интерне́т", "translation": "因特网", "pos": "noun", "grammar": { "gender": "m" }, "syntax_note": "注音：[тэрнэ]" },
+      { "lemma": "хи́мия", "translation": "化学", "pos": "noun", "grammar": { "gender": "f" }, "syntax_note": "" },
+      { "lemma": "жизнь", "translation": "生活；生命", "pos": "noun", "grammar": { "gender": "f", "special": "soft" }, "syntax_note": "", },
+      { "lemma": "де́тство", "translation": "童年", "pos": "noun", "grammar": { "gender": "n" }, "syntax_note": "", },
+      { "lemma": "переры́в", "translation": "休息 (课间/工间)", "pos": "noun", "grammar": { "gender": "m" }, "syntax_note": "", },
+      { "lemma": "матема́тика", "translation": "数学", "pos": "noun", "grammar": { "gender": "f" }, "syntax_note": "", },
     ]
   },
   {
@@ -541,7 +557,10 @@ export const INITIAL_DATA: Category[] = [
       { "lemma": "ну", "translation": "喂/好吧 (语气词)", "pos": "other", "grammar": {} },
       { "lemma": "и", "translation": "和", "pos": "other", "grammar": {} },
       { "lemma": "ли", "translation": "是否，吗", "pos": "other", "grammar": {}, "syntax_note": "语气词"},
-      { "lemma": "кро́ме того́", "translation": "除此之外，此外", "pos": "other", "grammar": {}, "syntax_note": ""}
+      { "lemma": "кро́ме того́", "translation": "除此之外，此外", "pos": "other", "grammar": {}, "syntax_note": ""},
+      { "lemma": "жаль", "translation": "遗憾，可惜", "pos": "other", "grammar": {}, "syntax_note": "插入语或谓语", },
+      { "lemma": "их", "translation": "他们的", "pos": "pron", "grammar": {}, "syntax_note": "物主代词" },
+      { "lemma": "о́ба", "translation": "两者都", "pos": "num", "grammar": {}, "syntax_note": "集合数词" }
     ]
   }
 ];
