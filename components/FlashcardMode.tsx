@@ -132,9 +132,9 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
 
     // 3. Define Base Weights
     const baseWeights: Record<GroupType, number> = {
-      new: isCapped ? 0 : 80,
-      hard: 100,
-      learning: 60,
+      new: isCapped ? 0 : 1000,
+      hard: 800,
+      learning: 200,
       mastered: 1 // Lowered mastered weight slightly to prioritize learning
     };
 
