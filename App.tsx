@@ -2,11 +2,12 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { INITIAL_DATA, POS_LABELS } from './constants';
 import { WordCard } from './components/WordCard';
 import { FlashcardMode } from './components/FlashcardMode';
-import { Search, Layers, Book, Grid, List, Zap, Filter, Settings, Brain, ArrowRightLeft, ListFilter, Shuffle, SortAsc, PieChart, Trash2, Volume2, Activity } from 'lucide-react';
+import { Search, Layers, Book, Grid, List, Zap, Filter, Settings, Brain, ArrowRightLeft, ListFilter, Shuffle, SortAsc, PieChart, Trash2, Volume2, Activity, Check } from 'lucide-react';
 import { PartOfSpeech, ReviewStrategy } from './types';
 import { getBrowserVoices, AudioVoice, GOOGLE_VOICE_URI } from './services/audioService';
 
 const STATS_KEY = 'ruvocab-progress';
+const MISTAKES_CATEGORY = "⚡ Exam Cram (Mistakes)";
 
 const App: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState<string>('All');
@@ -17,6 +18,9 @@ const App: React.FC = () => {
   const [layoutMode, setLayoutMode] = useState<'grid' | 'list'>('grid');
   const [showFilters, setShowFilters] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0); // Forces stats recalculation
+
+  // Store full stats data for filtering
+  const [statsData, setStatsData] = useState<Record<string, any>>({});
 
   // --- Audio Settings ---
   const [voices, setVoices] = useState<AudioVoice[]>([]);
@@ -70,58 +74,75 @@ const App: React.FC = () => {
     );
   }, []);
 
-  const categories = ['All', ...INITIAL_DATA.map(c => c.category)];
+  const categories = ['All', MISTAKES_CATEGORY, ...INITIAL_DATA.map(c => c.category)];
 
   const filteredItems = useMemo(() => {
     return allItems.filter(item => {
-      const matchesCategory = activeCategory === 'All' || item.categoryName === activeCategory;
+      // 1. Category Filter
+      let matchesCategory = true;
+      if (activeCategory === 'All') {
+        matchesCategory = true;
+      } else if (activeCategory === MISTAKES_CATEGORY) {
+        // Special logic for Mistakes: Check statsData
+        const key = `${studyDirection}:${item.lemma}`;
+        const stat = statsData[key];
+        matchesCategory = stat && stat.mistakeCount > 0;
+      } else {
+        matchesCategory = item.categoryName === activeCategory;
+      }
+
+      // 2. POS Filter
       const matchesPos = selectedPos === 'All' || item.pos === selectedPos;
+
+      // 3. Search Filter
       const matchesSearch = item.lemma.toLowerCase().includes(searchQuery.toLowerCase()) || 
                             item.translation.toLowerCase().includes(searchQuery.toLowerCase());
+      
       return matchesCategory && matchesPos && matchesSearch;
     });
-  }, [allItems, activeCategory, selectedPos, searchQuery]);
+  }, [allItems, activeCategory, selectedPos, searchQuery, statsData, studyDirection]);
 
   // --- Statistics Calculation ---
   const [stats, setStats] = useState({ total: 0, hard: 0, learning: 0, mastered: 0, unseen: 0 });
 
   useEffect(() => {
-    // Re-calculate stats whenever view mode changes, direction changes, or explicit refresh triggered
-    if (viewMode === 'browse') {
-      try {
-        const statsStr = localStorage.getItem(STATS_KEY);
-        const storageData = statsStr ? JSON.parse(statsStr) : {};
+    // Load stats from localStorage
+    try {
+      const statsStr = localStorage.getItem(STATS_KEY);
+      const storageData = statsStr ? JSON.parse(statsStr) : {};
+      
+      // Update the full stats object state for filtering
+      setStatsData(storageData);
+
+      // Calculate counts for dashboard
+      let hard = 0;
+      let learning = 0;
+      let mastered = 0;
+      let unseen = 0;
+      
+      allItems.forEach(item => {
+        const key = `${studyDirection}:${item.lemma}`;
+        const record = storageData[key];
         
-        let hard = 0;
-        let learning = 0;
-        let mastered = 0;
-        let unseen = 0;
-        
-        // Calculate based on ALL items to show global progress
-        allItems.forEach(item => {
-          const key = `${studyDirection}:${item.lemma}`;
-          const record = storageData[key];
-          
-          if (!record) {
-            unseen++;
-          } else {
-             const streak = record.streak || 0;
-             if (record.difficulty === 'hard' || streak === 0) {
-               hard++;
-             } else if (streak >= 3) {
-               mastered++;
-             } else {
-               learning++; // streak 1 or 2
-             }
-          }
-        });
-        
-        setStats({ total: allItems.length, hard, learning, mastered, unseen });
-      } catch (e) {
-        console.error("Error calculating stats:", e);
-        // Fallback to zero stats to prevent crash
-        setStats({ total: allItems.length, hard: 0, learning: 0, mastered: 0, unseen: allItems.length });
-      }
+        if (!record) {
+          unseen++;
+        } else {
+            const streak = record.streak || 0;
+            if (record.difficulty === 'hard' || streak === 0) {
+              hard++;
+            } else if (streak >= 3) {
+              mastered++;
+            } else {
+              learning++; // streak 1 or 2
+            }
+        }
+      });
+      
+      setStats({ total: allItems.length, hard, learning, mastered, unseen });
+    } catch (e) {
+      console.error("Error calculating stats:", e);
+      setStats({ total: allItems.length, hard: 0, learning: 0, mastered: 0, unseen: allItems.length });
+      setStatsData({});
     }
   }, [viewMode, studyDirection, allItems, refreshTrigger]);
 
@@ -149,8 +170,7 @@ const App: React.FC = () => {
           localStorage.setItem(STATS_KEY, JSON.stringify(newData));
         }
         
-        // Optimistic UI update: Reset stats immediately to reflect empty state
-        // This ensures the user sees the change instantly even if useEffect has a slight delay
+        // Optimistic UI update
         setStats({
           total: allItems.length,
           hard: 0,
@@ -158,6 +178,7 @@ const App: React.FC = () => {
           mastered: 0,
           unseen: allItems.length
         });
+        setStatsData({}); // Clear internal data cache
 
         // Trigger refresh for other components if needed
         setRefreshTrigger(prev => prev + 1);
@@ -228,6 +249,11 @@ const App: React.FC = () => {
                 <div className="flex items-center gap-2 text-slate-700 font-medium shrink-0">
                   <Settings size={18} />
                   <span className="text-sm">Study Options</span>
+                  {activeCategory === MISTAKES_CATEGORY && (
+                     <span className="ml-2 px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded-full font-bold">
+                       Mistakes Mode
+                     </span>
+                  )}
                 </div>
                 
                 {/* Right: Controls */}
@@ -329,8 +355,20 @@ const App: React.FC = () => {
                />
              ) : (
                <div className="flex flex-col items-center justify-center min-h-[50vh] p-8">
-                 <p className="text-lg text-slate-500 mb-4">No words match your current filters.</p>
-                 <button onClick={() => { setActiveCategory('All'); setSelectedPos('All'); setSearchQuery(''); }} className="text-blue-600 hover:underline">Clear Filters</button>
+                 {activeCategory === MISTAKES_CATEGORY ? (
+                    <div className="text-center">
+                        <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                           <Check size={32} />
+                        </div>
+                        <h2 className="text-xl font-bold text-slate-800 mb-2">No Mistakes Recorded!</h2>
+                        <p className="text-slate-500">You haven't marked any cards as "Hard" yet in this direction.</p>
+                    </div>
+                 ) : (
+                    <>
+                      <p className="text-lg text-slate-500 mb-4">No words match your current filters.</p>
+                      <button onClick={() => { setActiveCategory('All'); setSelectedPos('All'); setSearchQuery(''); }} className="text-blue-600 hover:underline">Clear Filters</button>
+                    </>
+                 )}
                </div>
              )}
            </div>

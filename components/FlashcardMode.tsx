@@ -261,25 +261,44 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
     if (strategy === 'smart_sort') {
       const key = getStorageKey(currentCard.lemma);
       const history = recentHistoryRef.current;
-      // Add to end
       history.push(key);
-      // Keep last 4 items
       if (history.length > 4) history.shift();
     }
 
-    // 2. Update Stats
+    // 2. Update Stats (Enhanced Logic)
     if (difficulty) {
       const stats = getStats();
       const key = getStorageKey(currentCard.lemma);
       const currentStat = stats[key];
-      const currentStreak = currentStat?.streak || 0;
+      
+      // Feature 2 Check: Is this a new word? (No stat exists yet)
+      const isNewWord = !currentStat;
+      
+      let newStreak = 0;
+      let mistakeCount = currentStat?.mistakeCount || 0;
 
-      const newStreak = difficulty === 'hard' ? 0 : currentStreak + 1;
+      if (difficulty === 'hard') {
+        newStreak = 0;
+        // Feature 1: Increment mistake count for Exam Cram
+        mistakeCount += 1;
+      } else {
+        // Difficulty is 'easy'
+        const currentStreak = currentStat?.streak || 0;
+        
+        if (isNewWord) {
+           // Feature 2: If it's the first time seeing it and we marked it Good, 
+           // jump straight to Mastered (Streak 3)
+           newStreak = 3;
+        } else {
+           newStreak = currentStreak + 1;
+        }
+      }
       
       stats[key] = {
         difficulty,
         lastReviewed: Date.now(),
-        streak: newStreak
+        streak: newStreak,
+        mistakeCount: mistakeCount // Persist mistake count
       };
       
       localStorage.setItem(STATS_KEY, JSON.stringify(stats));
