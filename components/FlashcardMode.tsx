@@ -135,7 +135,7 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
       new: isCapped ? 0 : 80,
       hard: 100,
       learning: 60,
-      mastered: 5 // Lowered mastered weight slightly to prioritize learning
+      mastered: 1 // Lowered mastered weight slightly to prioritize learning
     };
 
     // 4. Calculate Final Weights with Staleness Bonus
