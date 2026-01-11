@@ -55,7 +55,7 @@ export const INITIAL_DATA: Category[] = [
       { "lemma": "вто́рник", "translation": "星期二", "pos": "noun", "grammar": { "gender": "m" } },
       { "lemma": "среда́", "translation": "星期三", "pos": "noun", "grammar": { "gender": "f" } },
       { "lemma": "четве́рг", "translation": "星期四", "pos": "noun", "grammar": { "gender": "m" } },
-
+      { "lemma": "пя́тница", "translation": "星期五", "pos": "noun", "grammar": { "gender": "f" }, "syntax_note": "" },
       { "lemma": "суббо́та", "translation": "星期六", "pos": "noun", "grammar": { "gender": "f" }   },
       { "lemma": "воскресе́нье", "translation": "星期日", "pos": "noun", "grammar": { "gender": "n" } },
       { "lemma": "янва́рь", "translation": "一月", "pos": "noun", "grammar": { "gender": "m" } },
@@ -74,6 +74,11 @@ export const INITIAL_DATA: Category[] = [
       { "lemma": "ле́то", "translation": "夏天", "pos": "noun", "grammar": { "gender": "n" } },
       { "lemma": "о́сень", "translation": "秋天", "pos": "noun", "grammar": { "gender": "f" } },
       { "lemma": "зима́", "translation": "冬天", "pos": "noun", "grammar": { "gender": "f" } },
+
+      { "lemma": "зимо́й", "translation": "在冬天", "pos": "adv", "grammar": {} },
+      { "lemma": "весно́й", "translation": "在春天", "pos": "adv", "grammar": {} },
+      { "lemma": "ле́том", "translation": "在夏天", "pos": "adv", "grammar": {}},
+      { "lemma": "о́сенью", "translation": "在秋天", "pos": "adv", "grammar": {}},
 
       { "lemma": "вре́мя", "translation": "时间", "pos": "noun", "grammar": { "gender": "n", "special": "-мя" } },
       { "lemma": "календа́рь", "translation": "日历", "pos": "noun", "grammar": { "gender": "m" }   },
@@ -156,6 +161,13 @@ export const INITIAL_DATA: Category[] = [
   {
     "category": "Nouns (People & Family) (名词：人、家庭、动物)",
     "items": [
+      { "lemma": "преподава́тельница", "translation": "大学女老师", "pos": "noun", "grammar": { "gender": "f" }, "syntax_note": "笔记补充：(中、高等学校)教师，教员" },
+      { "lemma": "студе́нтка", "translation": "女大学生", "pos": "noun", "grammar": { "gender": "f" }, "syntax_note": "" },
+      { "lemma": "москви́чка", "translation": "莫斯科人(女)", "pos": "noun", "grammar": { "gender": "f" }, "syntax_note": "" },
+      { "lemma": "го́стья", "translation": "女客人", "pos": "noun", "grammar": { "gender": "f" }, "syntax_note": "" },
+      { "lemma": "до́чка", "translation": "女儿 (爱称)", "pos": "noun", "grammar": { "gender": "f" }, "syntax_note": "" },
+      { "lemma": "чемпио́н", "translation": "冠军", "pos": "noun", "grammar": { "gender": "m" }, "syntax_note": "" },
+      { "lemma": "ребя́та", "translation": "伙计们；孩子们", "pos": "noun", "grammar": { "plural_only": true }, "syntax_note": "笔记补充：小伙子们；同学们" },
       { "lemma": "семья́", "translation": "家庭", "pos": "noun", "grammar": { "gender": "f" } },
       { "lemma": "роди́тели", "translation": "父母", "pos": "noun", "grammar": { "plural_only": true } },
       { "lemma": "оте́ц", "translation": "父亲", "pos": "noun", "grammar": { "gender": "m" } },
@@ -434,6 +446,8 @@ export const INITIAL_DATA: Category[] = [
   {
     "category": "Adverbs & Others (副词、代词及其他)",
     "items": [
+      {  "lemma": "темно́", "translation": "黑暗", "pos": "adv", "grammar": {}  },
+      { "lemma": "чи́сто", "translation": "干净地", "pos": "adv", "grammar": {} },
       { "lemma": "так", "translation": "这样/如此", "pos": "adv", "grammar": {} },
       { "lemma": "потому́", "translation": "因此 (常接что)", "pos": "adv", "grammar": {} },
       { "lemma": "обы́чно", "translation": "通常", "pos": "adv", "grammar": {} },
@@ -499,7 +513,8 @@ export const INITIAL_DATA: Category[] = [
   },
   {
     "category": "Prepositions & Particles (虚词)",
-    "items": [
+    "items": [  
+      { "lemma": "да́же", "translation": "甚至", "pos": "other", "grammar": {},},
       { "lemma": "у", "translation": "在...旁边", "pos": "prep", "grammar": {}, "syntax_note": "+ 2g (所有格)" },
       { "lemma": "от", "translation": "从.../由...", "pos": "prep", "grammar": {}, "syntax_note": "+ 2g" },
       { "lemma": "в", "translation": "在...里/去...", "pos": "prep", "grammar": {} },
