@@ -166,8 +166,11 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
     // 5. Select Group (Weighted Random)
     if (totalWeight <= 0) {
        // This can happen if only 'new' items exist but we are capped. 
-       // In that edge case, force pick 'new' if available, otherwise null.
-       if (groups.new.length > 0) return { item: groups.new[0], group: 'new' as GroupType };
+       // In that edge case, force pick a random 'new' if available.
+       if (groups.new.length > 0) {
+          const rand = Math.floor(Math.random() * groups.new.length);
+          return { item: groups.new[rand], group: 'new' as GroupType };
+       }
        return null;
     }
 
@@ -186,15 +189,21 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
     // 6. Select Item Within Group
     const groupCandidates = groups[selectedGroup];
     
+    // For 'new' words, we want Pure Randomness to avoid sequential database order.
+    if (selectedGroup === 'new') {
+        const randomIndex = Math.floor(Math.random() * groupCandidates.length);
+        return { item: groupCandidates[randomIndex], group: selectedGroup };
+    }
+
+    // For review groups ('hard', 'learning', 'mastered'), we prioritize Staleness (oldest lastReviewed).
     // Sort logic: Oldest lastReviewed (or None) first.
-    // Since we already filtered history, these are all "valid" candidates.
     groupCandidates.sort((a, b) => {
       const timeA = stats[getStorageKey(a.lemma)]?.lastReviewed || 0;
       const timeB = stats[getStorageKey(b.lemma)]?.lastReviewed || 0;
       return timeA - timeB; 
     });
 
-    // Pick from the top N candidates to add variety
+    // Pick from the top N candidates to add variety to the review queue
     const poolSize = Math.min(groupCandidates.length, 3);
     const randomIndex = Math.floor(Math.random() * poolSize);
     
