@@ -396,7 +396,14 @@ export const INITIAL_DATA: Category[] = [
       { "lemma": "спорт", "translation": "体育", "pos": "noun", "grammar": { "gender": "m" }, "syntax_note": "笔记：运动" },
       { "lemma": "пого́да", "translation": "天气", "pos": "noun", "grammar": { "gender": "f" } },
       { "lemma": "де́рево", "translation": "树", "pos": "noun", "grammar": { "gender": "n" } },
-      { "lemma": "снег", "translation": "雪", "pos": "noun", "grammar": { "gender": "m" } }
+      { "lemma": "снег", "translation": "雪", "pos": "noun", "grammar": { "gender": "m" } },
+      { "lemma": "фи́рма", "translation": "公司", "pos": "noun", "grammar": { "gender": "f" }, "syntax_note": "" },
+      { "lemma": "ле́кция", "translation": "(大学的)讲课，讲座", "pos": "noun", "grammar": { "gender": "f" }, "syntax_note": "" },
+      { "lemma": "заня́тие", "translation": "课，课堂", "pos": "noun", "grammar": { "gender": "n" }, "syntax_note": "" },
+      { "lemma": "специа́льность", "translation": "专业", "pos": "noun", "grammar": { "gender": "f" }, "syntax_note": "图片标注：[阴]" },
+      { "lemma": "литерату́ра", "translation": "文学", "pos": "noun", "grammar": { "gender": "f" }, "syntax_note": "" },
+      { "lemma": "видеофи́льм", "translation": "影视剧", "pos": "noun", "grammar": { "gender": "m" }, "syntax_note": "" },
+      { "lemma": "расска́з", "translation": "讲述；故事；短篇小说", "pos": "noun", "grammar": { "gender": "m" }, "syntax_note": "" }
     ]
   },
   {
@@ -532,7 +539,9 @@ export const INITIAL_DATA: Category[] = [
       { "lemma": "э́то", "translation": "这是", "pos": "other", "grammar": {} },
       { "lemma": "вот", "translation": "这就是/喏", "pos": "other", "grammar": {} },
       { "lemma": "ну", "translation": "喂/好吧 (语气词)", "pos": "other", "grammar": {} },
-      { "lemma": "и", "translation": "和", "pos": "other", "grammar": {} }
+      { "lemma": "и", "translation": "和", "pos": "other", "grammar": {} },
+      { "lemma": "ли", "translation": "是否，吗", "pos": "other", "grammar": {}, "syntax_note": "语气词"},
+      { "lemma": "кро́ме того́", "translation": "除此之外，此外", "pos": "other", "grammar": {}, "syntax_note": ""}
     ]
   }
 ];

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { WordItem, ReviewStrategy, AIWordAnalysis } from '../types';
-import { Volume2, Check, X, Eye, BookOpen, RefreshCw, Sparkles, Loader2, Brain, Activity } from 'lucide-react';
+import { Volume2, Check, X, Eye, BookOpen, RefreshCw, Sparkles, Loader2, Brain, Activity, Lock } from 'lucide-react';
 import { POS_LABELS, CONJUGATION_LABELS } from '../constants';
 import { AudioVoice, speakRussian } from '../services/audioService';
 import { analyzeWordWithGemini } from '../services/geminiService';
@@ -19,12 +19,6 @@ interface FlashcardModeProps {
 // LocalStorage Key
 const STATS_KEY = 'ruvocab-progress';
 
-interface WordStats {
-  difficulty: 'easy' | 'hard';
-  lastReviewed: number;
-  streak: number; 
-}
-
 export const FlashcardMode: React.FC<FlashcardModeProps> = ({ 
   items, 
   onExit, 
@@ -39,6 +33,7 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
   const [isFlipped, setIsFlipped] = useState(false);
   const [sessionItems, setSessionItems] = useState<WordItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isWorkloadCapped, setIsWorkloadCapped] = useState(false);
   
   // AI Analysis State
   const [analysis, setAnalysis] = useState<AIWordAnalysis | null>(null);
@@ -57,96 +52,124 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
     }
   };
 
-  // Initialize Session Items
+  // --- 1. Session Generation Logic ---
   useEffect(() => {
     setLoading(true);
-    let candidateItems = [...items]; // Copy array
     const stats = getStats();
+    const now = Date.now();
+    const ONE_DAY = 24 * 60 * 60 * 1000;
 
-    // 1. Filter logic for 'hard_only'
-    if (strategy === 'hard_only') {
-      candidateItems = candidateItems.filter(item => {
-        const key = getStorageKey(item.lemma);
-        const stat = stats[key];
-        return stat && (stat.difficulty === 'hard' || stat.streak === 0);
-      });
-      candidateItems.sort(() => Math.random() - 0.5);
-    } 
-    // 2. Sequential
-    else if (strategy === 'sequential') {
-      // keep order
-    }
-    // 3. Random
-    else if (strategy === 'random') {
-      candidateItems.sort(() => Math.random() - 0.5);
-    }
-    // 4. SMART SORT
-    else if (strategy === 'smart_sort') {
-      const now = Date.now();
-      const ONE_DAY = 24 * 60 * 60 * 1000;
-
-      // Workload Management
-      let activeCount = 0;
-      candidateItems.forEach(item => {
-        const stat = stats[getStorageKey(item.lemma)];
-        if (stat) {
-          const isHard = stat.difficulty === 'hard' || stat.streak === 0;
-          const isLearning = stat.streak > 0 && stat.streak < 3;
-          if (isHard || isLearning) activeCount++;
+    // A. Calculate Active Load within the CURRENT SCOPE (items)
+    // Active = Hard (Difficulty='hard' or Streak=0) OR Learning (Streak 1 or 2)
+    let activeLoadCount = 0;
+    
+    items.forEach(item => {
+      const s = stats[getStorageKey(item.lemma)];
+      if (s) {
+        const isHard = s.difficulty === 'hard' || s.streak === 0;
+        const isLearning = s.streak > 0 && s.streak < 3;
+        if (isHard || isLearning) {
+          activeLoadCount++;
         }
-      });
+      }
+    });
 
-      if (activeCount >= learningThreshold) {
-        // Filter out new words if overloaded
-        candidateItems = candidateItems.filter(item => !!stats[getStorageKey(item.lemma)]);
+    const isOverloaded = activeLoadCount >= learningThreshold;
+    setIsWorkloadCapped(isOverloaded);
+
+    // B. Filter & Sort Candidates
+    let candidates = items.map(item => {
+      const key = getStorageKey(item.lemma);
+      const stat = stats[key];
+      return { item, stat, key };
+    });
+
+    // --- Strategy Implementation ---
+
+    if (strategy === 'hard_only') {
+      // Strict Filter: Only Hard or Streak 0
+      candidates = candidates.filter(c => 
+        c.stat && (c.stat.difficulty === 'hard' || c.stat.streak === 0)
+      );
+      // Shuffle
+      candidates.sort(() => Math.random() - 0.5);
+    } 
+    else if (strategy === 'sequential') {
+      // Keep original order (as passed in 'items')
+    }
+    else if (strategy === 'random') {
+      // Pure Shuffle
+      candidates.sort(() => Math.random() - 0.5);
+    }
+    else if (strategy === 'smart_sort') {
+      // --- SMART ALGORITHM ---
+      
+      // 1. Filter New Words if Overloaded
+      if (isOverloaded) {
+        // Only keep items that have stats (Exclude 'New')
+        candidates = candidates.filter(c => !!c.stat);
       }
 
-      // Probabilistic Sorting
-      candidateItems = candidateItems.map(item => {
-        const stat = stats[getStorageKey(item.lemma)];
+      // 2. Assign Weights (Higher = Show First)
+      candidates = candidates.map(c => {
         let weight = 0;
-        
-        if (!stat) {
-           weight = 40; 
+        const daysSinceReview = c.stat ? (now - c.stat.lastReviewed) / ONE_DAY : 999;
+
+        if (!c.stat) {
+          // New Word
+          weight = 500; 
         } else {
-           const daysSince = (now - stat.lastReviewed) / ONE_DAY;
-           if (stat.difficulty === 'hard' || stat.streak === 0) {
-             weight = 100 + (daysSince * 20);
-           } else if (stat.streak < 3) {
-             weight = 60 + (daysSince * 10);
-           } else {
-             weight = 5 + (daysSince * 0.5);
-           }
+          const { streak, difficulty } = c.stat;
+          
+          if (difficulty === 'hard' || streak === 0) {
+            // Priority 1: Hard / Lapsed
+            weight = 1000 + (daysSinceReview * 10);
+          } else if (streak < 3) {
+            // Priority 2: Active Learning
+            weight = 800 + (daysSinceReview * 5);
+          } else {
+            // Priority 3: Mastered (Review if old)
+            // If reviewed recently, weight is low. If old, weight increases.
+            weight = 10 + (daysSinceReview * 2);
+          }
         }
-        return { item, sortScore: weight * Math.random() };
-      })
-      .sort((a, b) => b.sortScore - a.sortScore)
-      .map(wrapper => wrapper.item);
+        
+        // Add small random noise to prevent identical order every time
+        const noise = Math.random() * 5; 
+        return { ...c, weight: weight + noise };
+      });
+
+      // 3. Sort by Weight Descending
+      candidates.sort((a, b) => (b as any).weight - (a as any).weight);
     }
 
+    // C. Apply Limit
+    const resultItems = candidates.map(c => c.item);
     if (limit !== 'all') {
-      candidateItems = candidateItems.slice(0, limit);
+      setSessionItems(resultItems.slice(0, limit));
+    } else {
+      setSessionItems(resultItems);
     }
 
-    setSessionItems(candidateItems);
     setCurrentIndex(0);
     setIsFlipped(false);
     setLoading(false);
-  }, [items, strategy, limit, direction, learningThreshold]); 
+  }, [items, strategy, limit, direction, learningThreshold]); // Rerun when scope or settings change
 
-  // Reset state when index changes
+  // Reset UI state when index changes
   useEffect(() => {
     setIsFlipped(false);
-    setAnalysis(null); // Reset AI analysis
+    setAnalysis(null);
     setLoadingAI(false);
   }, [currentIndex]);
 
-  // Calculate current session stats for the dashboard
-  const sessionStats = useMemo(() => {
+  // --- 2. Scope Statistics (Dashboard) ---
+  // Calculates statistics for the User's Selected Filter (POS/Category), not just the session
+  const scopeStats = useMemo(() => {
     const stats = getStats();
     let counts = { new: 0, hard: 0, learning: 0, mastered: 0 };
     
-    sessionItems.forEach(item => {
+    items.forEach(item => {
       const s = stats[getStorageKey(item.lemma)];
       if (!s) {
         counts.new++;
@@ -159,7 +182,7 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
       }
     });
     return counts;
-  }, [sessionItems, currentIndex]); // Recalculate when items or index changes (as stats might update)
+  }, [items, currentIndex, direction]); // Updates when items (scope) changes or we review a word
 
   const currentItem = sessionItems[currentIndex];
 
@@ -170,6 +193,9 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
       const currentStat = stats[key];
       const currentStreak = currentStat?.streak || 0;
 
+      // Simple Leitner-ish Logic
+      // Hard -> Reset streak to 0
+      // Easy -> Increment streak
       const newStreak = difficulty === 'hard' ? 0 : currentStreak + 1;
       
       stats[key] = {
@@ -203,23 +229,36 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
 
   // --- Render Logic ---
 
-  if (loading) return <div className="text-center p-10 text-slate-500">Preparing study session...</div>;
+  if (loading) return (
+    <div className="flex flex-col items-center justify-center min-h-[480px]">
+      <Loader2 className="animate-spin text-slate-400 mb-2" size={32} />
+      <span className="text-slate-500">Preparing session...</span>
+    </div>
+  );
 
   if (sessionItems.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] p-8 text-center max-w-md mx-auto">
+      <div className="flex flex-col items-center justify-center min-h-[480px] p-8 text-center max-w-md mx-auto">
         <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-6">
           <Check size={32} />
         </div>
-        <h3 className="text-2xl font-bold text-slate-800 mb-2">No items to review!</h3>
-        <p className="text-slate-600 mb-8">
+        <h3 className="text-2xl font-bold text-slate-800 mb-2">You're all caught up!</h3>
+        <p className="text-slate-600 mb-6">
           {strategy === 'hard_only' 
-            ? "No 'Hard' words found. Great job!" 
-            : "No words match your criteria or workload limit."}
+            ? "No 'Hard' words found in this category." 
+            : "No words match your current review criteria."}
         </p>
+        
+        {strategy === 'smart_sort' && isWorkloadCapped && (
+          <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg text-sm text-yellow-800 mb-6">
+            <p className="font-semibold mb-1 flex items-center justify-center gap-2"><Lock size={14}/> New words are paused</p>
+            You have reached your active learning limit ({learningThreshold} words). Review your "Hard" and "Learning" words to unlock new ones.
+          </div>
+        )}
+
         <div className="flex gap-4">
           <button onClick={onResetFilter} className="px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors flex items-center gap-2">
-            <RefreshCw size={18} /> Study All
+            <RefreshCw size={18} /> Review All
           </button>
           <button onClick={onExit} className="px-6 py-3 bg-white border border-slate-300 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors">
             Exit
@@ -339,13 +378,6 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
   // Back Face Content (Always Rich)
   const BackFace = (
     <div className="flex flex-col items-center justify-center flex-1 w-full py-6 overflow-y-auto">
-      {/* We always render rich details on the back. 
-          If RU->ZH, we need to show translation.
-          If ZH->RU, we need to show translation (the prompt) as well contextually, or just the Russian word details?
-          Usually Back = Answer. 
-          RU->ZH Back = Chinese + Full Russian Info.
-          ZH->RU Back = Russian (Answer) + Full Russian Info.
-      */}
       {renderRichRussianDetails(true)} 
     </div>
   );
@@ -353,38 +385,55 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
   return (
     <div className="w-full max-w-2xl mx-auto flex flex-col items-center justify-start min-h-[calc(100vh-140px)] p-4">
       
-      {/* 1. Session Stats Dashboard (Replaces Counter) */}
+      {/* 1. Dashboard: Scope Stats (Filter Status) */}
       <div className="w-full flex justify-between items-center mb-6 bg-white p-2 rounded-xl border border-slate-200 shadow-sm">
-        <div className="flex items-center gap-4 px-2">
-           <div className="flex items-center gap-1.5" title="New / Unseen in session">
+        <div className="flex items-center gap-4 px-2 overflow-x-auto no-scrollbar">
+           {/* New */}
+           <div className={`flex items-center gap-1.5 shrink-0 ${isWorkloadCapped && strategy === 'smart_sort' ? 'opacity-50 grayscale' : ''}`} title="New words available">
              <div className="w-2.5 h-2.5 rounded-full bg-slate-300"></div>
-             <span className="text-xs font-bold text-slate-600">{sessionStats.new}</span>
+             <div className="flex flex-col">
+                <span className="text-xs font-bold text-slate-600 leading-none">{scopeStats.new}</span>
+                {isWorkloadCapped && strategy === 'smart_sort' && <span className="text-[9px] text-slate-400">Locked</span>}
+             </div>
            </div>
-           <div className="flex items-center gap-1.5" title="Learning (Streak < 3)">
-             <div className="w-2.5 h-2.5 rounded-full bg-yellow-400"></div>
-             <span className="text-xs font-bold text-slate-600">{sessionStats.learning}</span>
+
+           {/* Learning */}
+           <div className="flex items-center gap-1.5 shrink-0" title="Learning (Streak 1-2)">
+             <div className="w-2.5 h-2.5 rounded-full bg-yellow-400 animate-pulse"></div>
+             <span className="text-xs font-bold text-slate-600">{scopeStats.learning}</span>
            </div>
-           <div className="flex items-center gap-1.5" title="Hard">
+
+           {/* Hard */}
+           <div className="flex items-center gap-1.5 shrink-0" title="Hard / Reset">
              <div className="w-2.5 h-2.5 rounded-full bg-red-500"></div>
-             <span className="text-xs font-bold text-slate-600">{sessionStats.hard}</span>
+             <span className="text-xs font-bold text-slate-600">{scopeStats.hard}</span>
            </div>
-           <div className="flex items-center gap-1.5" title="Mastered">
+
+           {/* Mastered */}
+           <div className="flex items-center gap-1.5 shrink-0" title="Mastered (Streak 3+)">
              <div className="w-2.5 h-2.5 rounded-full bg-green-500"></div>
-             <span className="text-xs font-bold text-slate-600">{sessionStats.mastered}</span>
+             <span className="text-xs font-bold text-slate-600">{scopeStats.mastered}</span>
            </div>
         </div>
-        <button onClick={onExit} className="text-xs font-medium text-slate-500 hover:text-slate-800 px-3 py-1 rounded-lg hover:bg-slate-100 transition-colors">
-          Exit
-        </button>
+
+        <div className="flex items-center gap-2">
+           {strategy === 'smart_sort' && isWorkloadCapped && (
+             <div className="text-[10px] font-medium bg-red-50 text-red-600 px-2 py-0.5 rounded border border-red-100 flex items-center gap-1">
+               <Activity size={10} /> Max Load
+             </div>
+           )}
+           <button onClick={onExit} className="text-xs font-medium text-slate-500 hover:text-slate-800 px-3 py-1 rounded-lg hover:bg-slate-100 transition-colors shrink-0">
+             Exit
+           </button>
+        </div>
       </div>
 
       {/* 2. Main Card Area */}
       <div 
         className="relative w-full h-[480px] perspective-1000 group cursor-pointer"
-        onClick={() => !loadingAI && setIsFlipped(!isFlipped)} // Prevent flip if clicking AI button bubbles up, handled by propagation stop but safe measure
+        onClick={() => !loadingAI && setIsFlipped(!isFlipped)} 
       >
         <div className={`relative w-full h-full duration-500 transform-style-3d transition-transform ${isFlipped ? 'rotate-y-180' : ''}`}>
-          
           {/* Front Face */}
           <div className="absolute w-full h-full backface-hidden bg-white rounded-2xl shadow-lg border border-slate-200 flex flex-col items-center overflow-hidden">
              {FrontFace}
@@ -392,7 +441,6 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
 
           {/* Back Face */}
           <div className="absolute w-full h-full backface-hidden rotate-y-180 bg-white rounded-2xl shadow-lg border border-blue-200 flex flex-col items-center overflow-hidden">
-             {/* Background tint for back side */}
              <div className="absolute inset-0 bg-slate-50/50 pointer-events-none" />
              <div className="relative z-10 w-full h-full flex flex-col items-center">
                 {BackFace}
@@ -429,6 +477,8 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
         .transform-style-3d { transform-style: preserve-3d; }
         .backface-hidden { backface-visibility: hidden; }
         .rotate-y-180 { transform: rotateY(180deg); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
     </div>
   );
