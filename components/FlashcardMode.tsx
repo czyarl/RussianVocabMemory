@@ -110,7 +110,7 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
     setIsWorkloadCapped(isCapped);
 
     // 3. Define Base Weights
-    // New: If capped 0, else 40
+    // New: If capped 0, else 80
     // Hard: High priority (100)
     // Learning: Medium priority (60)
     // Mastered: Low priority (5)
