@@ -458,6 +458,7 @@ export const INITIAL_DATA: Category[] = [
       { "lemma": "англи́йский", "translation": "英国的", "pos": "adj", "grammar": {} },
       { "lemma": "пеки́нский", "translation": "北京的", "pos": "adj", "grammar": {} },
       { "lemma": "моско́вский", "translation": "莫斯科的", "pos": "adj", "grammar": {} },
+      { "lemma": "мо́дный", "translation": "时尚的", "pos": "adj", "grammar": {} },
       { "lemma": "дома́шний", "translation": "家庭的", "pos": "adj", "grammar": { "special": "soft" } }
     ]
   },
@@ -485,7 +486,6 @@ export const INITIAL_DATA: Category[] = [
       { "lemma": "пло́хо", "translation": "坏/不好", "pos": "adv", "grammar": {} },
       { "lemma": "ти́хо", "translation": "安静地", "pos": "adv", "grammar": {} },
       { "lemma": "вку́сно", "translation": "好吃", "pos": "adv", "grammar": {} },
-      { "lemma": "мо́дный", "translation": "时尚的", "pos": "adv", "grammar": {} },
       { "lemma": "интере́сно", "translation": "有趣", "pos": "adv", "grammar": {} },
       { "lemma": "здесь", "translation": "这里", "pos": "adv", "grammar": {} },
       { "lemma": "там", "translation": "那里", "pos": "adv", "grammar": {} },
